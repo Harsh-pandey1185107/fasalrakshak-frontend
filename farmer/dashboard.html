@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8" />
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    />
+
+    <title>
+        Farmer Dashboard - FasalRakshak AI
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="../css/style.css"
+    />
+
+</head>
+
+
+<body>
+
+    <!-- ================================================================
+         HEADER
+         ================================================================ -->
+
+    <header class="topbar">
+
+        <div class="brand">
+
+            <div class="brand-logo">
+                FR
+            </div>
+
+            <div>
+
+                <h1>
+                    FasalRakshak AI
+                </h1>
+
+                <div class="brand-tag">
+                    Farmer Portal
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <a
+            href="../index.html"
+            class="logout-link"
+        >
+            Home
+        </a>
+
+    </header>
+
+
+    <!-- ================================================================
+         CONNECTION STATUS
+         ================================================================ -->
+
+    <div
+        id="syncBar"
+        class="sync-bar"
+    >
+        Connecting to FasalRakshak backend...
+    </div>
+
+
+    <!-- ================================================================
+         MAIN CONTENT
+         ================================================================ -->
+
+    <main class="container">
+
+
+        <!-- ============================================================
+             PAGE TITLE
+             ============================================================ -->
+
+        <h2
+            class="section-title"
+            style="margin-top:24px;"
+        >
+            Your Reports
+        </h2>
+
+
+        <!-- ============================================================
+             STATISTICS
+             ============================================================ -->
+
+        <div class="stats-grid">
+
+            <div class="stat-card">
+
+                <div
+                    class="stat-number"
+                    id="statTotal"
+                >
+                    0
+                </div>
+
+                <div class="stat-label">
+                    Total Reports
+                </div>
+
+            </div>
+
+
+            <div class="stat-card">
+
+                <div
+                    class="stat-number"
+                    id="statPending"
+                >
+                    0
+                </div>
+
+                <div class="stat-label">
+                    Pending
+                </div>
+
+            </div>
+
+
+            <div class="stat-card">
+
+                <div
+                    class="stat-number"
+                    id="statReview"
+                >
+                    0
+                </div>
+
+                <div class="stat-label">
+                    Under Review
+                </div>
+
+            </div>
+
+
+            <div class="stat-card">
+
+                <div
+                    class="stat-number"
+                    id="statVerified"
+                >
+                    0
+                </div>
+
+                <div class="stat-label">
+                    Verified
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ============================================================
+             NEW REPORT BUTTON
+             ============================================================ -->
+
+        <a
+            href="report-new.html"
+            class="btn btn-primary"
+            style="
+                width:100%;
+                margin-top:24px;
+                text-align:center;
+            "
+        >
+            📷 Report Crop Damage
+        </a>
+
+
+        <!-- ============================================================
+             RECENT REPORTS
+             ============================================================ -->
+
+        <h3
+            class="section-title"
+            style="margin-top:28px;"
+        >
+            Recent Reports
+        </h3>
+
+
+        <div
+            class="card"
+            style="padding:0;"
+        >
+
+            <div id="reportList">
+
+                <div class="empty-state">
+                    Loading your reports...
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ============================================================
+             INFORMATION
+             ============================================================ -->
+
+        <div
+            class="card"
+            style="margin-top:20px;"
+        >
+
+            <div class="card-title">
+                AI Assessment Information
+            </div>
+
+            <p class="muted">
+
+                Crop evidence submitted through
+                FasalRakshak is analyzed by the
+                AI model and supported with a
+                source-grounded RAG explanation.
+
+                Final verification is performed
+                by an authorized field officer.
+
+            </p>
+
+        </div>
+
+
+    </main>
+
+
+    <!-- ================================================================
+         JAVASCRIPT
+
+         IMPORTANT:
+         mockData.js is intentionally NOT loaded.
+
+         Real flow:
+         utils.js
+              ↓
+         api.js
+              ↓
+         farmer.js
+              ↓
+         FastAPI backend
+         ================================================================ -->
+
+
+    <script src="../js/utils.js"></script>
+
+    <script src="../js/api.js"></script>
+
+    <script src="../js/farmer.js"></script>
+
+
+    <script>
+
+        document.addEventListener(
+            "DOMContentLoaded",
+            async function () {
+
+                const syncBar =
+                    document.getElementById(
+                        "syncBar"
+                    );
+
+
+                try {
+
+                    if (syncBar) {
+
+                        syncBar.textContent =
+                            "Loading live farmer reports...";
+
+                    }
+
+
+                    await renderFarmerDashboard();
+
+
+                    if (syncBar) {
+
+                        syncBar.textContent =
+                            "Connected to FasalRakshak backend";
+
+                    }
+
+                }
+
+                catch (error) {
+
+                    console.error(
+                        "Dashboard initialization error:",
+                        error
+                    );
+
+
+                    if (syncBar) {
+
+                        syncBar.textContent =
+                            "Backend connection error";
+
+                    }
+
+                }
+
+            }
+        );
+
+    </script>
+
+
+</body>
+
+</html>

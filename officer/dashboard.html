@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>
+    Officer Dashboard — FasalRakshak AI
+  </title>
+
+  <link
+    rel="stylesheet"
+    href="../css/style.css"
+  />
+</head>
+
+
+<body>
+
+  <!-- ===================================================== -->
+  <!-- HEADER -->
+  <!-- ===================================================== -->
+
+  <header class="topbar officer">
+
+    <div class="brand">
+
+      <div class="brand-logo">
+        FR
+      </div>
+
+      <div>
+
+        <h1>
+          FasalRakshak AI
+        </h1>
+
+        <div class="brand-tag">
+          Field Officer Portal
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div style="display:flex; gap:12px; align-items:center;">
+
+      <span
+        id="officerIdentity"
+        class="brand-tag"
+      >
+        Officer
+      </span>
+
+      <button
+        type="button"
+        id="officerLogoutBtn"
+        class="logout-link"
+        style="background:none; border:none; cursor:pointer;"
+      >
+        Logout
+      </button>
+
+    </div>
+
+  </header>
+
+
+  <!-- ===================================================== -->
+  <!-- CONNECTION STATUS -->
+  <!-- ===================================================== -->
+
+  <div
+    id="dashboardStatus"
+    class="sync-bar"
+  >
+    Connecting to FasalRakshak backend...
+  </div>
+
+
+  <!-- ===================================================== -->
+  <!-- MAIN DASHBOARD -->
+  <!-- ===================================================== -->
+
+  <main class="container-wide">
+
+    <div
+      style="
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        gap:16px;
+        margin-top:24px;
+      "
+    >
+
+      <h2 class="section-title">
+        Report Verification Queue
+      </h2>
+
+
+      <button
+        type="button"
+        id="refreshReportsBtn"
+        class="btn btn-outline"
+      >
+        ↻ Refresh Reports
+      </button>
+
+    </div>
+
+
+    <!-- =================================================== -->
+    <!-- STATISTICS -->
+    <!-- =================================================== -->
+
+    <div class="stats-grid">
+
+      <div class="stat-card">
+
+        <div
+          class="stat-number"
+          id="statTotal"
+        >
+          0
+        </div>
+
+        <div class="stat-label">
+          Total Reports
+        </div>
+
+      </div>
+
+
+      <div class="stat-card">
+
+        <div
+          class="stat-number"
+          id="statPending"
+        >
+          0
+        </div>
+
+        <div class="stat-label">
+          Pending Verification
+        </div>
+
+      </div>
+
+
+      <div class="stat-card">
+
+        <div
+          class="stat-number"
+          id="statReview"
+        >
+          0
+        </div>
+
+        <div class="stat-label">
+          Under Review
+        </div>
+
+      </div>
+
+
+      <div class="stat-card">
+
+        <div
+          class="stat-number"
+          id="statVerified"
+        >
+          0
+        </div>
+
+        <div class="stat-label">
+          Verified
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- =================================================== -->
+    <!-- SEARCH + FILTER -->
+    <!-- =================================================== -->
+
+    <div class="filter-bar">
+
+      <input
+        type="text"
+        id="searchInput"
+        placeholder="Search by Evidence ID, farmer, disease or crop..."
+      />
+
+
+      <select id="statusFilter">
+
+        <option value="">
+          All Statuses
+        </option>
+
+        <option value="Pending">
+          Pending
+        </option>
+
+        <option value="Under Review">
+          Under Review
+        </option>
+
+        <option value="Verified">
+          Verified
+        </option>
+
+        <option value="Rejected">
+          Rejected
+        </option>
+
+      </select>
+
+    </div>
+
+
+    <!-- =================================================== -->
+    <!-- REPORT TABLE -->
+    <!-- =================================================== -->
+
+    <div
+      class="card"
+      style="padding:0;"
+    >
+
+      <div id="reportTable">
+
+        <div class="empty-state">
+          Loading reports...
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- =================================================== -->
+    <!-- IMPORTANT MODEL NOTE -->
+    <!-- =================================================== -->
+
+    <div
+      class="card"
+      style="margin-top:20px;"
+    >
+
+      <div class="card-title">
+        AI Assessment Note
+      </div>
+
+      <p class="muted">
+
+        The current TensorFlow model performs onion
+        disease/pest classification.
+
+        It does not estimate crop-loss percentage.
+
+        Officer verification remains mandatory for
+        official decisions.
+
+      </p>
+
+    </div>
+
+  </main>
+
+
+  <!-- ===================================================== -->
+  <!-- JAVASCRIPT -->
+  <!-- ===================================================== -->
+
+  <script src="../js/utils.js"></script>
+
+  <!-- Real FastAPI API layer -->
+  <script src="../js/api.js"></script>
+
+  <!-- Officer logic -->
+  <script src="../js/officer.js"></script>
+
+
+  <script>
+
+    document.addEventListener(
+      "DOMContentLoaded",
+      function () {
+
+        initOfficerDashboard();
+
+      }
+    );
+
+  </script>
+
+</body>
+
+</html>

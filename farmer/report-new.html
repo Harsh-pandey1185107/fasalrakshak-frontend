@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Report Crop Damage — FasalRakshak AI</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+
+<body>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-logo">FR</div>
+
+      <div>
+        <h1>Report Damage</h1>
+        <div class="brand-tag">
+          Upload crop evidence for AI assessment
+        </div>
+      </div>
+    </div>
+
+    <a href="dashboard.html" class="logout-link">
+      Cancel
+    </a>
+  </header>
+
+
+  <main class="container">
+
+    <form id="reportForm" novalidate>
+
+      <!-- ================================================== -->
+      <!-- CROP PHOTO -->
+      <!-- ================================================== -->
+
+      <div class="field" id="photoField">
+
+        <label for="photoInput">
+          Crop Photo *
+        </label>
+
+        <div id="uploadBox" class="upload-box">
+
+          <svg
+            width="36"
+            height="36"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#5B6472"
+            stroke-width="1.5"
+          >
+            <path d="M4 7h3l2-2h6l2 2h3v12H4V7z"/>
+            <circle cx="12" cy="13" r="3.5"/>
+          </svg>
+
+          <p>
+            Tap to take a photo or choose from gallery
+          </p>
+
+        </div>
+
+        <input
+          type="file"
+          id="photoInput"
+          accept="image/*"
+          capture="environment"
+          style="display:none;"
+        />
+
+        <img
+          id="photoPreview"
+          class="preview-img"
+          style="display:none;"
+          alt="Selected crop photo preview"
+        />
+
+        <p class="error-text">
+          Please add a crop photo.
+        </p>
+
+      </div>
+
+
+      <!-- ================================================== -->
+      <!-- CROP TYPE -->
+      <!-- ================================================== -->
+
+      <div class="field">
+
+        <label for="cropSelect">
+          Crop Type *
+        </label>
+
+        <select id="cropSelect">
+
+          <option value="">
+            Select crop
+          </option>
+
+          <!-- Current AI model supports Onion -->
+          <option value="Onion">
+            Onion
+          </option>
+
+          <option value="Paddy">
+            Paddy
+          </option>
+
+          <option value="Wheat">
+            Wheat
+          </option>
+
+          <option value="Maize">
+            Maize
+          </option>
+
+          <option value="Sugarcane">
+            Sugarcane
+          </option>
+
+          <option value="Pulses">
+            Pulses
+          </option>
+
+          <option value="Other">
+            Other
+          </option>
+
+        </select>
+
+        <p class="hint">
+          Current AI disease model is trained for Onion.
+        </p>
+
+      </div>
+
+
+      <!-- ================================================== -->
+      <!-- DAMAGE TYPE -->
+      <!-- ================================================== -->
+
+      <div class="field" id="damageField">
+
+        <label>
+          Observed Problem *
+        </label>
+
+        <div
+          class="chip-group"
+          id="damageChips"
+        >
+
+          <button
+            type="button"
+            class="chip"
+            data-value="Disease"
+          >
+            Disease
+          </button>
+
+          <button
+            type="button"
+            class="chip"
+            data-value="Pest"
+          >
+            Pest
+          </button>
+
+          <button
+            type="button"
+            class="chip"
+            data-value="Leaf Spots"
+          >
+            Leaf Spots
+          </button>
+
+          <button
+            type="button"
+            class="chip"
+            data-value="Drying"
+          >
+            Drying
+          </button>
+
+          <button
+            type="button"
+            class="chip"
+            data-value="Other"
+          >
+            Other
+          </button>
+
+        </div>
+
+        <p class="error-text">
+          Please select an observed problem.
+        </p>
+
+      </div>
+
+
+      <!-- ================================================== -->
+      <!-- LOCATION -->
+      <!-- ================================================== -->
+
+      <div class="field">
+
+        <label for="locationInput">
+          Location *
+        </label>
+
+        <input
+          type="text"
+          id="locationInput"
+          placeholder="Village, District, State"
+        />
+
+        <button
+          type="button"
+          id="gpsBtn"
+          class="btn btn-outline mt-2"
+        >
+          📍 Use Current Location
+        </button>
+
+        <p
+          class="hint"
+          id="gpsHint"
+        >
+          GPS coordinates will be attached when available.
+        </p>
+
+      </div>
+
+
+      <!-- ================================================== -->
+      <!-- TIMESTAMP -->
+      <!-- ================================================== -->
+
+      <div class="field">
+
+        <label>
+          Timestamp
+        </label>
+
+        <input
+          type="text"
+          id="timestampDisplay"
+          readonly
+        />
+
+        <p class="hint">
+          Recorded automatically during submission.
+        </p>
+
+      </div>
+
+
+      <!-- ================================================== -->
+      <!-- DESCRIPTION -->
+      <!-- ================================================== -->
+
+      <div class="field">
+
+        <label for="descInput">
+          Description
+        </label>
+
+        <textarea
+          id="descInput"
+          placeholder="Example: Brown or purple spots are appearing on onion leaves..."
+        ></textarea>
+
+        <button
+          type="button"
+          id="voiceBtn"
+          class="btn btn-outline mt-2"
+        >
+          🎙️ Speak Instead of Typing
+        </button>
+
+        <p
+          class="hint"
+          id="voiceHint"
+        ></p>
+
+      </div>
+
+
+      <!-- ================================================== -->
+      <!-- SUBMIT -->
+      <!-- ================================================== -->
+
+      <button
+        type="submit"
+        id="submitBtn"
+        class="btn btn-primary"
+      >
+        Submit Evidence & Run AI Assessment
+      </button>
+
+
+      <p
+        id="submitStatus"
+        class="hint"
+        style="margin-top:12px;"
+      ></p>
+
+    </form>
+
+  </main>
+
+
+  <!-- ====================================================== -->
+  <!-- JAVASCRIPT -->
+  <!-- ====================================================== -->
+
+  <script src="../js/mockData.js"></script>
+
+  <script src="../js/utils.js"></script>
+
+  <!-- Real FastAPI communication layer -->
+  <script src="../js/api.js"></script>
+
+  <script src="../js/farmer.js"></script>
+
+  <script>
+    initMockData();
+    initReportForm();
+  </script>
+
+</body>
+</html>

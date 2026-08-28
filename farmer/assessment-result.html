@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>
+    AI Assessment Result — FasalRakshak AI
+  </title>
+
+  <link
+    rel="stylesheet"
+    href="../css/style.css"
+  />
+</head>
+
+
+<body>
+
+  <!-- ===================================================== -->
+  <!-- HEADER -->
+  <!-- ===================================================== -->
+
+  <header class="topbar">
+
+    <div class="brand">
+
+      <div class="brand-logo">
+        FR
+      </div>
+
+      <div>
+
+        <h1>
+          Assessment Result
+        </h1>
+
+        <div
+          class="brand-tag"
+          id="reportIdTag"
+        >
+          Loading report...
+        </div>
+
+      </div>
+
+    </div>
+
+  </header>
+
+
+  <!-- ===================================================== -->
+  <!-- AI + RAG RESULT -->
+  <!-- farmer.js inserts the result here -->
+  <!-- ===================================================== -->
+
+  <main
+    class="container"
+    id="resultContainer"
+  >
+
+    <div class="card">
+
+      <h2>
+        Loading AI Assessment...
+      </h2>
+
+      <p>
+        Retrieving TensorFlow prediction and
+        grounded crop-disease explanation.
+      </p>
+
+    </div>
+
+  </main>
+
+
+  <!-- ===================================================== -->
+  <!-- JAVASCRIPT -->
+  <!-- ===================================================== -->
+
+  <script src="../js/mockData.js"></script>
+
+  <script src="../js/utils.js"></script>
+
+  <!-- FastAPI communication functions -->
+  <script src="../js/api.js"></script>
+
+  <!-- Farmer application logic -->
+  <script src="../js/farmer.js"></script>
+
+
+  <script>
+
+    document.addEventListener(
+      "DOMContentLoaded",
+      function () {
+
+        renderAssessmentResult();
+
+      }
+    );
+
+  </script>
+
+</body>
+
+</html>
