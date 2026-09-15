@@ -1,29 +1,667 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Report Crop Damage — FasalRakshak AI</title>
+
+  <meta name="theme-color" content="#2f7650" />
+
+  <meta name="mobile-web-app-capable" content="yes" />
+
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+
+  <meta name="apple-mobile-web-app-title" content="FasalRakshak" />
+
+  <title>
+    Report Crop Damage — FasalRakshak AI
+  </title>
+
+  <link rel="manifest" href="../manifest.webmanifest" />
+
   <link rel="stylesheet" href="../css/style.css" />
+
+  <style>
+    .role3-section {
+      margin-bottom: 28px;
+    }
+
+    .section-heading {
+      margin-bottom: 6px;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--color-ink);
+    }
+
+    .section-subtitle {
+      margin-bottom: 18px;
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--color-ink-light);
+    }
+
+    .language-box {
+      background: #ffffff;
+      border: 1px solid #e3e7e4;
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+
+
+    /* =========================================================
+       NETWORK
+       ========================================================= */
+
+    .network-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+      padding: 11px 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      background: #eef6ef;
+      color: #28663d;
+    }
+
+    .network-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #3d8b55;
+      flex-shrink: 0;
+    }
+
+    .network-indicator.offline {
+      background: #fff4df;
+      color: #8b5b17;
+    }
+
+    .network-indicator.offline .network-dot {
+      background: #d68a22;
+    }
+
+
+    /* =========================================================
+       SAVE / SYNC
+       ========================================================= */
+
+    .offline-save-status {
+      display: none;
+      margin-bottom: 16px;
+      padding: 13px 15px;
+      border-radius: 12px;
+      background: #eef6ef;
+      color: #28663d;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .offline-save-status.visible {
+      display: block;
+    }
+
+    .sync-status-card {
+      display: none;
+      margin-bottom: 20px;
+      padding: 16px;
+      border-radius: 14px;
+      border: 1px solid #e0e5e1;
+      background: #ffffff;
+    }
+
+    .sync-status-card.visible {
+      display: block;
+    }
+
+    .sync-status-card.pending {
+      background: #fff7e8;
+      border-color: #efd4a7;
+    }
+
+    .sync-status-card.syncing {
+      background: #eef5ff;
+      border-color: #bfd1ec;
+    }
+
+    .sync-status-card.success {
+      background: #edf8ef;
+      border-color: #badcc2;
+    }
+
+    .sync-status-card.failed {
+      background: #fff1f1;
+      border-color: #e8bcbc;
+    }
+
+    .sync-status-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .sync-status-title {
+      font-size: 15px;
+      font-weight: 800;
+      margin-bottom: 5px;
+    }
+
+    .sync-status-message {
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .sync-queue-badge {
+      min-width: 28px;
+      height: 28px;
+      padding: 0 8px;
+      border-radius: 999px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.07);
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    .sync-spinner {
+      display: none;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(0, 0, 0, 0.12);
+      border-top-color: currentColor;
+      border-radius: 50%;
+      animation: frSpin 0.8s linear infinite;
+      margin-top: 10px;
+    }
+
+    .sync-status-card.syncing .sync-spinner {
+      display: block;
+    }
+
+    @keyframes frSpin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .retry-sync-btn {
+      display: none;
+      margin-top: 12px;
+    }
+
+    .sync-status-card.failed .retry-sync-btn {
+      display: inline-flex;
+    }
+
+
+    /* =========================================================
+       EVIDENCE CARDS
+       ========================================================= */
+
+    .evidence-step {
+      background: #ffffff;
+      border: 1px solid #dfe5e1;
+      border-radius: 16px;
+      padding: 18px;
+      margin-bottom: 16px;
+      transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease;
+    }
+
+    .evidence-step.completed {
+      border-color: #3f8f57;
+      box-shadow:
+        0 0 0 2px rgba(63, 143, 87, 0.08);
+    }
+
+    .evidence-step.has-error {
+      border-color: #c84b4b;
+    }
+
+    .evidence-step-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .evidence-step-title-wrap {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .evidence-icon {
+      width: 46px;
+      height: 46px;
+      border-radius: 12px;
+      background: #eef6ef;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 25px;
+      flex-shrink: 0;
+    }
+
+    .evidence-step-number {
+      margin-bottom: 3px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #5f6d64;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .evidence-step h3 {
+      margin: 0;
+      font-size: 17px;
+    }
+
+    .evidence-instruction {
+      margin-top: 6px;
+      color: var(--color-ink-light);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .evidence-status {
+      font-size: 13px;
+      font-weight: 700;
+      color: #7a817d;
+      white-space: nowrap;
+    }
+
+    .evidence-status.done {
+      color: #2f7c48;
+    }
+
+    .camera-btn {
+      width: 100%;
+      min-height: 54px;
+      font-size: 16px;
+      margin-top: 6px;
+    }
+
+    .evidence-preview-wrap {
+      display: none;
+      margin-top: 14px;
+    }
+
+    .evidence-preview-wrap.visible {
+      display: block;
+    }
+
+    .evidence-preview {
+      display: block;
+      width: 100%;
+      max-height: 320px;
+      object-fit: cover;
+      border-radius: 14px;
+      border: 1px solid #d9dfda;
+      background: #f5f7f5;
+    }
+
+    .preview-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .preview-actions .btn {
+      flex: 1;
+    }
+
+    .evidence-error {
+      display: none;
+      margin-top: 9px;
+      color: var(--color-danger);
+      font-size: 13px;
+    }
+
+    .evidence-step.has-error .evidence-error {
+      display: block;
+    }
+
+
+    /* =========================================================
+       GPS
+       ========================================================= */
+
+    .gps-info {
+      margin-top: 10px;
+      padding: 11px 13px;
+      border-radius: 10px;
+      background: #f6f8f6;
+      font-size: 13px;
+      line-height: 1.55;
+      display: none;
+    }
+
+    .gps-info.visible {
+      display: block;
+    }
+
+
+    /* =========================================================
+       VOICE
+       ========================================================= */
+
+    .voice-card {
+      margin-top: 18px;
+      padding: 18px;
+      border: 1px solid #dfe5e1;
+      border-radius: 16px;
+      background: #ffffff;
+    }
+
+    .voice-card-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 15px;
+    }
+
+    .voice-icon {
+      width: 46px;
+      height: 46px;
+      flex-shrink: 0;
+      border-radius: 12px;
+      background: #eef6ef;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+
+    .voice-card-title {
+      margin: 0;
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .voice-card-text {
+      margin: 5px 0 0;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--color-ink-light);
+    }
+
+    .voice-record-controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .voice-record-controls .btn {
+      flex: 1;
+      min-width: 180px;
+      min-height: 52px;
+    }
+
+    .recording-state {
+      display: none;
+      margin-top: 14px;
+      padding: 13px 15px;
+      border-radius: 12px;
+      background: #fff2f2;
+      color: #9c3030;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .recording-state.visible {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .recording-pulse {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #cf3e3e;
+      animation: recordingPulse 1s infinite;
+    }
+
+    @keyframes recordingPulse {
+      0% {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+      50% {
+        opacity: 0.35;
+        transform: scale(1.35);
+      }
+
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .voice-playback-wrap {
+      display: none;
+      margin-top: 14px;
+      padding: 14px;
+      border-radius: 12px;
+      background: #f6f8f6;
+      border: 1px solid #e1e6e2;
+    }
+
+    .voice-playback-wrap.visible {
+      display: block;
+    }
+
+    .voice-recorded-label {
+      margin-bottom: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #2d6f43;
+    }
+
+    .voice-playback {
+      width: 100%;
+      margin-bottom: 10px;
+    }
+
+    .voice-playback-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .voice-playback-actions .btn {
+      flex: 1;
+    }
+
+    .voice-hint {
+      margin-top: 10px;
+      font-size: 13px;
+      color: var(--color-ink-light);
+    }
+
+
+    /* =========================================================
+       COMPLETENESS
+       ========================================================= */
+
+    .completeness-card {
+      background: #ffffff;
+      border: 1px solid #dfe5e1;
+      border-radius: 16px;
+      padding: 18px;
+      margin-bottom: 24px;
+    }
+
+    .completeness-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 14px;
+    }
+
+    .completeness-title {
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .completeness-percent {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--color-primary);
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 12px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e8ece9;
+      margin-bottom: 16px;
+    }
+
+    .progress-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--color-primary);
+      transition: width 0.25s ease;
+    }
+
+    .evidence-checklist {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .evidence-check-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      min-height: 38px;
+      padding: 7px 0;
+      border-bottom: 1px solid #edf0ee;
+      gap: 16px;
+      font-size: 14px;
+    }
+
+    .evidence-check-item:last-child {
+      border-bottom: 0;
+    }
+
+    .check-state {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #ecefed;
+      color: #7a817d;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    .check-state.complete {
+      background: #e6f4ea;
+      color: #287942;
+    }
+
+    .completion-message {
+      display: none;
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: #eaf6ec;
+      color: #27683c;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .completion-message.visible {
+      display: block;
+    }
+
+    .submit-role3-btn {
+      width: 100%;
+      min-height: 58px;
+      font-size: 17px;
+      margin-top: 6px;
+    }
+
+
+    /* =========================================================
+       MOBILE
+       ========================================================= */
+
+    @media (max-width: 600px) {
+
+      .evidence-step-header {
+        flex-direction: column;
+      }
+
+      .evidence-status {
+        margin-left: 58px;
+      }
+
+      .preview-actions,
+      .voice-playback-actions,
+      .voice-record-controls {
+        flex-direction: column;
+      }
+
+      .voice-record-controls .btn {
+        min-width: 0;
+      }
+
+      .sync-status-header {
+        flex-direction: column;
+      }
+
+    }
+  </style>
+
 </head>
+
 
 <body>
 
   <header class="topbar">
+
     <div class="brand">
-      <div class="brand-logo">FR</div>
+
+      <div class="brand-logo">
+        FR
+      </div>
 
       <div>
-        <h1>Report Damage</h1>
-        <div class="brand-tag">
-          Upload crop evidence for AI assessment
+
+        <h1 data-i18n="reportDamage">
+          Report Damage
+        </h1>
+
+        <div class="brand-tag" data-i18n="reportSubtitle">
+          Capture clear evidence of crop damage
         </div>
+
       </div>
+
     </div>
 
-    <a href="dashboard.html" class="logout-link">
+
+    <a href="dashboard.html" class="logout-link" data-i18n="cancel">
       Cancel
     </a>
+
   </header>
 
 
@@ -31,305 +669,897 @@
 
     <form id="reportForm" novalidate>
 
-      <!-- ================================================== -->
-      <!-- CROP PHOTO -->
-      <!-- ================================================== -->
+      <!-- NETWORK -->
 
-      <div class="field" id="photoField">
+      <div id="networkIndicator" class="network-indicator" role="status" aria-live="polite">
 
-        <label for="photoInput">
-          Crop Photo *
-        </label>
+        <span class="network-dot"></span>
 
-        <div id="uploadBox" class="upload-box">
+        <span id="networkStatusText">
+          Online
+        </span>
 
-          <svg
-            width="36"
-            height="36"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#5B6472"
-            stroke-width="1.5"
-          >
-            <path d="M4 7h3l2-2h6l2 2h3v12H4V7z"/>
-            <circle cx="12" cy="13" r="3.5"/>
-          </svg>
+      </div>
 
-          <p>
-            Tap to take a photo or choose from gallery
+
+      <!-- DRAFT -->
+
+      <div id="offlineSaveStatus" class="offline-save-status" role="status" aria-live="polite">
+        ✓ Draft saved safely on this device.
+      </div>
+
+
+      <!-- SYNC -->
+
+      <section id="syncStatusCard" class="sync-status-card" aria-live="polite" aria-atomic="true">
+
+        <div class="sync-status-header">
+
+          <div>
+
+            <div id="syncStatusTitle" class="sync-status-title">
+              Offline Submission
+            </div>
+
+            <div id="syncStatusMessage" class="sync-status-message">
+              Waiting for network.
+            </div>
+
+          </div>
+
+
+          <div id="syncQueueBadge" class="sync-queue-badge" aria-label="Queued reports">
+            0
+          </div>
+
+        </div>
+
+
+        <div class="sync-spinner"></div>
+
+
+        <button type="button" id="retrySyncBtn" class="btn btn-outline retry-sync-btn">
+          ↻ Retry Synchronization
+        </button>
+
+      </section>
+
+
+      <!-- LANGUAGE -->
+
+      <section class="language-box">
+
+        <div class="field">
+
+          <label for="languageSelect" data-i18n="chooseLanguage">
+            Choose Your Language
+          </label>
+
+
+          <select id="languageSelect">
+
+            <option value="en">
+              English
+            </option>
+
+            <option value="hi">
+              हिन्दी
+            </option>
+
+            <option value="mr">
+              मराठी
+            </option>
+
+            <option value="kn">
+              ಕನ್ನಡ
+            </option>
+
+          </select>
+
+
+          <p class="hint" data-i18n="languageHelp">
+            You can change the language later.
           </p>
 
         </div>
 
-        <input
-          type="file"
-          id="photoInput"
-          accept="image/*"
-          capture="environment"
-          style="display:none;"
-        />
-
-        <img
-          id="photoPreview"
-          class="preview-img"
-          style="display:none;"
-          alt="Selected crop photo preview"
-        />
-
-        <p class="error-text">
-          Please add a crop photo.
-        </p>
-
-      </div>
+      </section>
 
 
-      <!-- ================================================== -->
-      <!-- CROP TYPE -->
-      <!-- ================================================== -->
+      <!-- CROP INFORMATION -->
 
-      <div class="field">
+      <section class="role3-section">
 
-        <label for="cropSelect">
-          Crop Type *
-        </label>
-
-        <select id="cropSelect">
-
-          <option value="">
-            Select crop
-          </option>
-
-          <!-- Current AI model supports Onion -->
-          <option value="Onion">
-            Onion
-          </option>
-
-          <option value="Paddy">
-            Paddy
-          </option>
-
-          <option value="Wheat">
-            Wheat
-          </option>
-
-          <option value="Maize">
-            Maize
-          </option>
-
-          <option value="Sugarcane">
-            Sugarcane
-          </option>
-
-          <option value="Pulses">
-            Pulses
-          </option>
-
-          <option value="Other">
-            Other
-          </option>
-
-        </select>
-
-        <p class="hint">
-          Current AI disease model is trained for Onion.
-        </p>
-
-      </div>
+        <h2 class="section-heading">
+          Crop Information
+        </h2>
 
 
-      <!-- ================================================== -->
-      <!-- DAMAGE TYPE -->
-      <!-- ================================================== -->
+        <div class="field" id="cropField">
 
-      <div class="field" id="damageField">
+          <label for="cropSelect" data-i18n="cropType">
+            Crop Type *
+          </label>
 
-        <label>
-          Observed Problem *
-        </label>
 
-        <div
-          class="chip-group"
-          id="damageChips"
-        >
+          <select id="cropSelect" required aria-required="true">
 
-          <button
-            type="button"
-            class="chip"
-            data-value="Disease"
-          >
-            Disease
-          </button>
+            <option value="" data-i18n="selectCrop">
+              Select crop
+            </option>
 
-          <button
-            type="button"
-            class="chip"
-            data-value="Pest"
-          >
-            Pest
-          </button>
+            <option value="Onion" data-i18n="onion">
+              Onion
+            </option>
 
-          <button
-            type="button"
-            class="chip"
-            data-value="Leaf Spots"
-          >
-            Leaf Spots
-          </button>
+            <option value="Paddy" data-i18n="paddy">Paddy</option>
+            <option value="Wheat" data-i18n="wheat">Wheat</option>
+            <option value="Maize" data-i18n="maize">Maize</option>
+            <option value="Sugarcane" data-i18n="sugarcane">Sugarcane</option>
+            <option value="Pulses" data-i18n="pulses">Pulses</option>
+            <option value="Other" data-i18n="other">Other</option>
 
-          <button
-            type="button"
-            class="chip"
-            data-value="Drying"
-          >
-            Drying
-          </button>
+          </select>
 
-          <button
-            type="button"
-            class="chip"
-            data-value="Other"
-          >
-            Other
-          </button>
+
+          <p class="error-text">
+            Please select a crop.
+          </p>
+
+          <p class="hint" style="margin-top:8px;">
+            Current AI disease classifier is validated for Onion in this prototype. Other crops can be collected as evidence but automated disease assessment is not run.
+          </p>
 
         </div>
 
-        <p class="error-text">
-          Please select an observed problem.
+
+        <div class="field" id="damageField">
+
+          <label data-i18n="damageType">
+            Damage Type *
+          </label>
+
+
+          <div class="chip-group" id="damageChips" role="group" aria-label="Select damage type">
+
+            <button type="button" class="chip" data-value="Flood" data-i18n="flood">
+              Flood
+            </button>
+
+            <button type="button" class="chip" data-value="Excessive Rainfall" data-i18n="excessiveRainfall">
+              Excessive Rainfall
+            </button>
+
+            <button type="button" class="chip" data-value="Hailstorm" data-i18n="hailstorm">
+              Hailstorm
+            </button>
+
+            <button type="button" class="chip" data-value="Pest" data-i18n="pest">
+              Pest
+            </button>
+
+            <button type="button" class="chip" data-value="Other" data-i18n="other">
+              Other
+            </button>
+
+          </div>
+
+
+          <p class="error-text" data-i18n="selectDamageError">
+            Please select a damage type.
+          </p>
+
+        </div>
+
+      </section>
+
+
+      <!-- ADAPTIVE EVIDENCE -->
+
+      <section class="role3-section">
+
+        <h2 class="section-heading" data-i18n="captureEvidence">
+          Capture Evidence
+        </h2>
+
+
+        <p class="section-subtitle" data-i18n="evidenceInstructions">
+          Follow each step to collect complete evidence.
         </p>
 
-      </div>
+
+        <!-- STEP 1 -->
+
+        <div class="evidence-step" id="leafStep" data-evidence="leaf">
+
+          <div class="evidence-step-header">
+
+            <div class="evidence-step-title-wrap">
+
+              <div class="evidence-icon" aria-hidden="true">
+                🍃
+              </div>
+
+              <div>
+
+                <div class="evidence-step-number">
+                  STEP 1 OF 4
+                </div>
+
+                <h3 data-i18n="step1Title">
+                  Affected Leaf
+                </h3>
+
+                <p class="evidence-instruction" data-i18n="step1Instruction">
+                  Take a clear close-up photo of the affected leaf.
+                </p>
+
+              </div>
+
+            </div>
 
 
-      <!-- ================================================== -->
-      <!-- LOCATION -->
-      <!-- ================================================== -->
+            <div class="evidence-status" id="leafStatus" role="status">
+              Not captured
+            </div>
 
-      <div class="field">
-
-        <label for="locationInput">
-          Location *
-        </label>
-
-        <input
-          type="text"
-          id="locationInput"
-          placeholder="Village, District, State"
-        />
-
-        <button
-          type="button"
-          id="gpsBtn"
-          class="btn btn-outline mt-2"
-        >
-          📍 Use Current Location
-        </button>
-
-        <p
-          class="hint"
-          id="gpsHint"
-        >
-          GPS coordinates will be attached when available.
-        </p>
-
-      </div>
+          </div>
 
 
-      <!-- ================================================== -->
-      <!-- TIMESTAMP -->
-      <!-- ================================================== -->
-
-      <div class="field">
-
-        <label>
-          Timestamp
-        </label>
-
-        <input
-          type="text"
-          id="timestampDisplay"
-          readonly
-        />
-
-        <p class="hint">
-          Recorded automatically during submission.
-        </p>
-
-      </div>
+          <button type="button" class="btn btn-outline camera-btn" id="leafCaptureBtn">
+            📷
+            <span data-i18n="takePhoto">
+              Take Photo
+            </span>
+          </button>
 
 
-      <!-- ================================================== -->
-      <!-- DESCRIPTION -->
-      <!-- ================================================== -->
-
-      <div class="field">
-
-        <label for="descInput">
-          Description
-        </label>
-
-        <textarea
-          id="descInput"
-          placeholder="Example: Brown or purple spots are appearing on onion leaves..."
-        ></textarea>
-
-        <button
-          type="button"
-          id="voiceBtn"
-          class="btn btn-outline mt-2"
-        >
-          🎙️ Speak Instead of Typing
-        </button>
-
-        <p
-          class="hint"
-          id="voiceHint"
-        ></p>
-
-      </div>
+          <input type="file" id="leafInput" accept="image/*" capture="environment" hidden />
 
 
-      <!-- ================================================== -->
-      <!-- SUBMIT -->
-      <!-- ================================================== -->
+          <div class="evidence-preview-wrap" id="leafPreviewWrap">
 
-      <button
-        type="submit"
-        id="submitBtn"
-        class="btn btn-primary"
-      >
-        Submit Evidence & Run AI Assessment
+            <img id="leafPreview" class="evidence-preview" alt="Affected leaf evidence preview" />
+
+
+            <div class="preview-actions">
+
+              <button type="button" class="btn btn-outline retake-btn" data-target="leaf">
+                ↻ Retake
+              </button>
+
+            </div>
+
+          </div>
+
+
+          <p class="evidence-error">
+            This photo is required.
+          </p>
+
+        </div>
+
+
+        <!-- STEP 2 -->
+
+        <div class="evidence-step" id="plantStep" data-evidence="plant">
+
+          <div class="evidence-step-header">
+
+            <div class="evidence-step-title-wrap">
+
+              <div class="evidence-icon" aria-hidden="true">
+                🌱
+              </div>
+
+              <div>
+
+                <div class="evidence-step-number">
+                  STEP 2 OF 4
+                </div>
+
+                <h3 data-i18n="step2Title">
+                  Whole Plant
+                </h3>
+
+                <p class="evidence-instruction" data-i18n="step2Instruction">
+                  Take a photo showing the complete affected plant.
+                </p>
+
+              </div>
+
+            </div>
+
+
+            <div class="evidence-status" id="plantStatus" role="status">
+              Not captured
+            </div>
+
+          </div>
+
+
+          <button type="button" class="btn btn-outline camera-btn" id="plantCaptureBtn">
+            📷
+            <span data-i18n="takePhoto">
+              Take Photo
+            </span>
+          </button>
+
+
+          <input type="file" id="plantInput" accept="image/*" capture="environment" hidden />
+
+
+          <div class="evidence-preview-wrap" id="plantPreviewWrap">
+
+            <img id="plantPreview" class="evidence-preview" alt="Whole plant evidence preview" />
+
+
+            <div class="preview-actions">
+
+              <button type="button" class="btn btn-outline retake-btn" data-target="plant">
+                ↻ Retake
+              </button>
+
+            </div>
+
+          </div>
+
+
+          <p class="evidence-error">
+            This photo is required.
+          </p>
+
+        </div>
+
+
+        <!-- STEP 3 -->
+
+        <div class="evidence-step" id="fieldStep" data-evidence="field">
+
+          <div class="evidence-step-header">
+
+            <div class="evidence-step-title-wrap">
+
+              <div class="evidence-icon" aria-hidden="true">
+                🌾
+              </div>
+
+              <div>
+
+                <div class="evidence-step-number">
+                  STEP 3 OF 4
+                </div>
+
+                <h3 data-i18n="step3Title">
+                  Wider Field
+                </h3>
+
+                <p class="evidence-instruction" data-i18n="step3Instruction">
+                  Take a wider photo showing the affected area of the field.
+                </p>
+
+              </div>
+
+            </div>
+
+
+            <div class="evidence-status" id="fieldStatus" role="status">
+              Not captured
+            </div>
+
+          </div>
+
+
+          <button type="button" class="btn btn-outline camera-btn" id="fieldCaptureBtn">
+            📷
+            <span data-i18n="takePhoto">
+              Take Photo
+            </span>
+          </button>
+
+
+          <input type="file" id="fieldInput" accept="image/*" capture="environment" hidden />
+
+
+          <div class="evidence-preview-wrap" id="fieldPreviewWrap">
+
+            <img id="fieldPreview" class="evidence-preview" alt="Field evidence preview" />
+
+
+            <div class="preview-actions">
+
+              <button type="button" class="btn btn-outline retake-btn" data-target="field">
+                ↻ Retake
+              </button>
+
+            </div>
+
+          </div>
+
+
+          <p class="evidence-error">
+            This photo is required.
+          </p>
+
+        </div>
+
+
+        <!-- STEP 4 -->
+
+        <div class="evidence-step" id="secondLocationStep" data-evidence="secondLocation">
+
+          <div class="evidence-step-header">
+
+            <div class="evidence-step-title-wrap">
+
+              <div class="evidence-icon" aria-hidden="true">
+                📍
+              </div>
+
+              <div>
+
+                <div class="evidence-step-number">
+                  STEP 4 OF 4
+                </div>
+
+                <h3 data-i18n="step4Title">
+                  Second Location
+                </h3>
+
+                <p class="evidence-instruction" data-i18n="step4Instruction">
+                  Move to another affected location and take another photo.
+                </p>
+
+              </div>
+
+            </div>
+
+
+            <div class="evidence-status" id="secondLocationStatus" role="status">
+              Not captured
+            </div>
+
+          </div>
+
+
+          <button type="button" class="btn btn-outline camera-btn" id="secondLocationCaptureBtn">
+            📷
+            <span data-i18n="takePhoto">
+              Take Photo
+            </span>
+          </button>
+
+
+          <input type="file" id="secondLocationInput" accept="image/*" capture="environment" hidden />
+
+
+          <div class="evidence-preview-wrap" id="secondLocationPreviewWrap">
+
+            <img id="secondLocationPreview" class="evidence-preview" alt="Second location evidence preview" />
+
+
+            <div class="preview-actions">
+
+              <button type="button" class="btn btn-outline retake-btn" data-target="secondLocation">
+                ↻ Retake
+              </button>
+
+            </div>
+
+          </div>
+
+
+          <p class="evidence-error">
+            This photo is required.
+          </p>
+
+        </div>
+
+      </section>
+
+
+      <!-- LOCATION + TIME -->
+
+      <section class="role3-section">
+
+        <h2 class="section-heading">
+          Location &amp; Time
+        </h2>
+
+
+        <div class="field" id="locationField">
+
+          <label for="locationInput" data-i18n="location">
+            Location *
+          </label>
+
+
+          <input type="text" id="locationInput" placeholder="Village, District, State" autocomplete="street-address" />
+
+
+          <button type="button" id="gpsBtn" class="btn btn-outline btn-block">
+            📍
+
+            <span data-i18n="useCurrentLocation">
+              Use Current Location
+            </span>
+
+          </button>
+
+
+          <p class="hint" id="gpsHint" data-i18n="gpsHint">
+            GPS coordinates will be attached automatically when available.
+          </p>
+
+
+          <div id="gpsInfo" class="gps-info" role="status" aria-live="polite"></div>
+
+
+          <p class="error-text">
+            Please capture your GPS location.
+          </p>
+
+        </div>
+
+
+        <div class="field">
+
+          <label for="timestampDisplay" data-i18n="timestampLabel">
+            Timestamp
+          </label>
+
+
+          <input type="text" id="timestampDisplay" readonly />
+
+
+          <p class="hint" data-i18n="timestampHint">
+            Recorded automatically when the evidence is captured.
+          </p>
+
+        </div>
+
+      </section>
+
+
+      <!-- DESCRIPTION + VOICE -->
+
+      <section class="role3-section">
+
+        <h2 class="section-heading">
+          Additional Details
+        </h2>
+
+
+        <div class="field">
+
+          <label for="descInput" data-i18n="description">
+            Description
+          </label>
+
+
+          <textarea id="descInput" data-i18n-placeholder="descriptionPlaceholder"
+            placeholder="Briefly describe what happened to the crop..." rows="4"></textarea>
+
+
+          <button type="button" id="voiceBtn" class="btn btn-outline btn-block">
+            🎙️
+
+            <span data-i18n="speakInstead">
+              Speak Instead of Typing
+            </span>
+
+          </button>
+
+
+          <p class="hint" id="voiceHint" role="status" aria-live="polite"></p>
+
+        </div>
+
+
+        <div class="voice-card">
+
+          <div class="voice-card-header">
+
+            <div class="voice-icon" aria-hidden="true">
+              🎤
+            </div>
+
+            <div>
+
+              <h3 class="voice-card-title">
+                Voice Recording
+              </h3>
+
+              <p class="voice-card-text">
+                Record a short voice note describing the crop damage.
+                The recording can be stored with the evidence even when offline.
+              </p>
+
+            </div>
+
+          </div>
+
+
+          <div class="voice-record-controls">
+
+            <button type="button" id="startVoiceRecordingBtn" class="btn btn-outline">
+              🎤 Start Recording
+            </button>
+
+
+            <button type="button" id="stopVoiceRecordingBtn" class="btn btn-outline" disabled>
+              ⏹ Stop Recording
+            </button>
+
+          </div>
+
+
+          <div id="voiceRecordingState" class="recording-state" role="status" aria-live="assertive">
+
+            <span class="recording-pulse" aria-hidden="true"></span>
+
+            <span>
+              Recording...
+            </span>
+
+            <span id="voiceRecordingTimer">
+              00:00
+            </span>
+
+          </div>
+
+
+          <div id="voicePlaybackWrap" class="voice-playback-wrap">
+
+            <div class="voice-recorded-label" id="voiceRecordedLabel">
+              ✓ Voice recording saved
+            </div>
+
+
+            <audio id="voicePlayback" class="voice-playback" controls preload="metadata"></audio>
+
+
+            <div class="voice-playback-actions">
+
+              <button type="button" id="replaceVoiceRecordingBtn" class="btn btn-outline">
+                ↻ Record Again
+              </button>
+
+
+              <button type="button" id="deleteVoiceRecordingBtn" class="btn btn-outline">
+                🗑 Delete
+              </button>
+
+            </div>
+
+          </div>
+
+
+          <p id="voiceRecorderHint" class="voice-hint" role="status" aria-live="polite">
+            Microphone permission will be requested when recording starts.
+          </p>
+
+        </div>
+
+      </section>
+
+
+      <!-- COMPLETENESS -->
+
+      <section class="completeness-card" aria-labelledby="completenessHeading">
+
+        <div class="completeness-top">
+
+          <div class="completeness-title" id="completenessHeading">
+            Evidence Completeness
+          </div>
+
+
+          <div class="completeness-percent" id="completenessPercent" aria-live="polite">
+            17%
+          </div>
+
+        </div>
+
+
+        <div class="progress-track" id="evidenceProgress" role="progressbar" aria-label="Evidence completeness"
+          aria-valuemin="0" aria-valuemax="100" aria-valuenow="17">
+
+          <div class="progress-fill" id="evidenceProgressFill"></div>
+
+        </div>
+
+
+        <ul class="evidence-checklist">
+
+          <li class="evidence-check-item">
+
+            <span>
+              Leaf close-up
+            </span>
+
+            <span class="check-state" id="checkLeaf">
+              —
+            </span>
+
+          </li>
+
+
+          <li class="evidence-check-item">
+
+            <span>
+              Whole plant
+            </span>
+
+            <span class="check-state" id="checkPlant">
+              —
+            </span>
+
+          </li>
+
+
+          <li class="evidence-check-item">
+
+            <span>
+              Field view
+            </span>
+
+            <span class="check-state" id="checkField">
+              —
+            </span>
+
+          </li>
+
+
+          <li class="evidence-check-item">
+
+            <span>
+              Second location
+            </span>
+
+            <span class="check-state" id="checkSecondLocation">
+              —
+            </span>
+
+          </li>
+
+
+          <li class="evidence-check-item">
+
+            <span>
+              GPS
+            </span>
+
+            <span class="check-state" id="checkGps">
+              —
+            </span>
+
+          </li>
+
+
+          <li class="evidence-check-item">
+
+            <span>
+              Timestamp
+            </span>
+
+            <span class="check-state" id="checkTimestamp">
+              ✓
+            </span>
+
+          </li>
+
+        </ul>
+
+
+        <div id="completionMessage" class="completion-message" role="status" aria-live="polite">
+          ✓ Evidence package is complete and ready to submit.
+        </div>
+
+      </section>
+
+
+      <button type="submit" class="btn btn-primary submit-role3-btn" id="submitEvidenceBtn">
+        Submit Evidence
       </button>
-
-
-      <p
-        id="submitStatus"
-        class="hint"
-        style="margin-top:12px;"
-      ></p>
 
     </form>
 
   </main>
 
 
-  <!-- ====================================================== -->
-  <!-- JAVASCRIPT -->
-  <!-- ====================================================== -->
+  <!-- LANGUAGES -->
+
+  <script src="../locales/en.js"></script>
+  <script src="../locales/hi.js"></script>
+  <script src="../locales/mr.js"></script>
+  <script src="../locales/kn.js"></script>
+
+
+  <!-- TRANSLATION ENGINE -->
+
+  <script src="../js/i18n.js"></script>
+
+
+  <!-- EXISTING PROJECT -->
 
   <script src="../js/mockData.js"></script>
-
   <script src="../js/utils.js"></script>
-
-  <!-- Real FastAPI communication layer -->
   <script src="../js/api.js"></script>
 
-  <script src="../js/farmer.js"></script>
+
+  <!-- OFFLINE DATABASE -->
+
+  <script src="../js/offlineDB.js"></script>
+
+
+  <!-- VOICE RECORDING -->
+
+  <script src="../js/voiceRecorder.js"></script>
+
+
+  <!-- PWA -->
+
+  <script src="../js/pwa.js"></script>
+
+
+  <!-- SYNC -->
+
+  <script src="../js/syncManager.js"></script>
+
+
+  <!-- FARMER APP -->
+
+  <script src="../js/farmer-role3.js"></script>
+
+
+  <!-- =========================================================
+       MONIKA ROLE 3 ACCESSIBILITY
+       ========================================================= -->
+
+  <script src="../js/accessibility.js"></script>
+
+
+  <!-- INITIALIZATION -->
 
   <script>
+
     initMockData();
+
+    FR_I18N.init();
+
+
+    const languageSelect =
+      document.getElementById(
+        "languageSelect"
+      );
+
+
+    if (languageSelect) {
+
+      languageSelect.addEventListener(
+        "change",
+        function () {
+
+          FR_I18N.setLanguage(
+            this.value
+          );
+
+        }
+      );
+
+    }
+
+
     initReportForm();
+
+
+    console.log(
+      "FasalRakshak Farmer PWA + Accessibility page initialized."
+    );
+
   </script>
 
 </body>
+
 </html>

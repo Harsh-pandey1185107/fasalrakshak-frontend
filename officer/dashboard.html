@@ -16,6 +16,18 @@
     rel="stylesheet"
     href="../css/style.css"
   />
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIINfQ3yn6NuqHjMZdpYMYtX7A6f9ZTfYxA="
+    crossorigin=""
+  />
+
+  <link
+    rel="stylesheet"
+    href="../css/god-view.css"
+  />
 </head>
 
 
@@ -84,197 +96,601 @@
 
 
   <!-- ===================================================== -->
-  <!-- MAIN DASHBOARD -->
+  <!-- DASHBOARD MODE TABS -->
   <!-- ===================================================== -->
 
-  <main class="container-wide">
+  <div class="gv-tab-shell">
 
     <div
-      style="
-        display:flex;
-        justify-content:space-between;
-        align-items:center;
-        gap:16px;
-        margin-top:24px;
-      "
+      class="gv-tabs"
+      role="tablist"
+      aria-label="Officer dashboard views"
     >
-
-      <h2 class="section-title">
-        Report Verification Queue
-      </h2>
-
 
       <button
         type="button"
-        id="refreshReportsBtn"
-        class="btn btn-outline"
+        id="caseVerificationTab"
+        class="gv-tab active"
+        role="tab"
+        aria-selected="true"
+        aria-controls="caseVerificationView"
       >
-        ↻ Refresh Reports
+        Case Verification
+      </button>
+
+      <button
+        type="button"
+        id="godViewTab"
+        class="gv-tab"
+        role="tab"
+        aria-selected="false"
+        aria-controls="godViewView"
+      >
+        Regional Intelligence
+        <span class="gv-tab-badge">
+          God View
+        </span>
       </button>
 
     </div>
 
+  </div>
 
-    <!-- =================================================== -->
-    <!-- STATISTICS -->
-    <!-- =================================================== -->
 
-    <div class="stats-grid">
+  <!-- ===================================================== -->
+  <!-- CASE VERIFICATION VIEW -->
+  <!-- Existing Role 5 workflow is preserved -->
+  <!-- ===================================================== -->
 
-      <div class="stat-card">
+  <div
+    id="caseVerificationView"
+    role="tabpanel"
+    aria-labelledby="caseVerificationTab"
+  >
+
+    <main class="container-wide">
+
+      <div
+        style="
+          display:flex;
+          justify-content:space-between;
+          align-items:center;
+          gap:16px;
+          margin-top:24px;
+        "
+      >
+
+        <h2 class="section-title">
+          Report Verification Queue
+        </h2>
+
+
+        <button
+          type="button"
+          id="refreshReportsBtn"
+          class="btn btn-outline"
+        >
+          ↻ Refresh Reports
+        </button>
+
+      </div>
+
+
+      <!-- =================================================== -->
+      <!-- STATISTICS -->
+      <!-- =================================================== -->
+
+      <div class="stats-grid">
+
+        <div class="stat-card">
+
+          <div
+            class="stat-number"
+            id="statTotal"
+          >
+            0
+          </div>
+
+          <div class="stat-label">
+            Total Reports
+          </div>
+
+        </div>
+
+
+        <div class="stat-card">
+
+          <div
+            class="stat-number"
+            id="statPending"
+          >
+            0
+          </div>
+
+          <div class="stat-label">
+            Pending Verification
+          </div>
+
+        </div>
+
+
+        <div class="stat-card">
+
+          <div
+            class="stat-number"
+            id="statReview"
+          >
+            0
+          </div>
+
+          <div class="stat-label">
+            Under Review
+          </div>
+
+        </div>
+
+
+        <div class="stat-card">
+
+          <div
+            class="stat-number"
+            id="statVerified"
+          >
+            0
+          </div>
+
+          <div class="stat-label">
+            Verified
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <!-- =================================================== -->
+      <!-- SEARCH + FILTER -->
+      <!-- =================================================== -->
+
+      <div class="filter-bar">
+
+        <input
+          type="text"
+          id="searchInput"
+          placeholder="Search by Evidence ID, farmer, disease or crop..."
+        />
+
+
+        <select id="statusFilter">
+
+          <option value="">
+            All Statuses
+          </option>
+
+          <option value="Pending">
+            Pending
+          </option>
+
+          <option value="Under Review">
+            Under Review
+          </option>
+
+          <option value="Verified">
+            Verified
+          </option>
+
+          <option value="Rejected">
+            Rejected
+          </option>
+
+        </select>
+
+      </div>
+
+
+      <!-- =================================================== -->
+      <!-- REPORT TABLE -->
+      <!-- =================================================== -->
+
+      <div
+        class="card"
+        style="padding:0;"
+      >
+
+        <div id="reportTable">
+
+          <div class="empty-state">
+            Loading reports...
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <!-- =================================================== -->
+      <!-- IMPORTANT MODEL NOTE -->
+      <!-- =================================================== -->
+
+      <div
+        class="card"
+        style="margin-top:20px;"
+      >
+
+        <div class="card-title">
+          AI Assessment Note
+        </div>
+
+        <p class="muted">
+
+          The current validated prototype model performs
+          onion disease/pest classification for its registered
+          output classes.
+
+          Unsupported crops are blocked from the Onion model.
+
+          The system does not estimate crop-loss percentage,
+          and officer verification remains mandatory for
+          official decisions.
+
+        </p>
+
+      </div>
+
+    </main>
+
+  </div>
+
+
+  <!-- ===================================================== -->
+  <!-- REGIONAL INTELLIGENCE / GOD VIEW -->
+  <!-- ===================================================== -->
+
+  <div
+    id="godViewView"
+    class="gv-view"
+    role="tabpanel"
+    aria-labelledby="godViewTab"
+    hidden
+  >
+
+    <main class="container-wide gv-main">
+
+      <div class="gv-hero">
+
+        <div>
+
+          <div class="gv-eyebrow">
+            Regional Crop Health Intelligence
+          </div>
+
+          <h2 class="gv-title">
+            God View
+          </h2>
+
+          <p class="gv-subtitle">
+            Officer-only regional decision support built from stored
+            farmer evidence, AI assessments, GPS, model routing and
+            human-review status.
+          </p>
+
+        </div>
+
+
+        <button
+          type="button"
+          id="refreshGodViewBtn"
+          class="btn btn-outline"
+        >
+          ↻ Refresh Intelligence
+        </button>
+
+      </div>
+
+
+      <div
+        id="godViewStatus"
+        class="gv-status"
+        aria-live="polite"
+      >
+        Open Regional Intelligence to load live data.
+      </div>
+
+
+      <!-- KPI CARDS -->
+
+      <section
+        class="gv-kpi-grid"
+        aria-label="Regional intelligence summary"
+      >
+
+        <article class="gv-kpi-card">
+          <div class="gv-kpi-label">
+            Evidence Cases
+          </div>
+          <div
+            id="gvKpiCases"
+            class="gv-kpi-value"
+          >
+            —
+          </div>
+          <div class="gv-kpi-note">
+            Stored evidence records
+          </div>
+        </article>
+
+        <article class="gv-kpi-card">
+          <div class="gv-kpi-label">
+            Unique Reports
+          </div>
+          <div
+            id="gvKpiReports"
+            class="gv-kpi-value"
+          >
+            —
+          </div>
+          <div class="gv-kpi-note">
+            Farmer report packages
+          </div>
+        </article>
+
+        <article class="gv-kpi-card gv-kpi-alert">
+          <div class="gv-kpi-label">
+            High Priority
+          </div>
+          <div
+            id="gvKpiHigh"
+            class="gv-kpi-value"
+          >
+            —
+          </div>
+          <div class="gv-kpi-note">
+            Officer review urgency
+          </div>
+        </article>
+
+        <article class="gv-kpi-card gv-kpi-blocked">
+          <div class="gv-kpi-label">
+            Unsupported Cases
+          </div>
+          <div
+            id="gvKpiUnsupported"
+            class="gv-kpi-value"
+          >
+            —
+          </div>
+          <div class="gv-kpi-note">
+            AI routing blocked
+          </div>
+        </article>
+
+      </section>
+
+
+      <!-- MAP + REVIEW QUEUE -->
+
+      <section class="gv-layout gv-layout-map">
+
+        <article class="gv-panel gv-map-panel">
+
+          <div class="gv-panel-head">
+            <div>
+              <div class="gv-panel-kicker">
+                Geospatial Evidence
+              </div>
+              <h3>
+                GPS Case Map
+              </h3>
+            </div>
+            <span
+              id="gvMapCount"
+              class="gv-chip"
+            >
+              0 locations
+            </span>
+          </div>
+
+          <div
+            id="godMap"
+            class="gv-map"
+            aria-label="Map of farmer evidence locations"
+          ></div>
+
+          <div
+            id="godMapFallback"
+            class="gv-map-fallback"
+            hidden
+          ></div>
+
+          <p class="gv-disclaimer">
+            Marker concentration is a review signal only. It does not
+            establish disease prevalence or confirm an outbreak.
+          </p>
+
+        </article>
+
+
+        <article class="gv-panel">
+
+          <div class="gv-panel-head">
+            <div>
+              <div class="gv-panel-kicker">
+                Human-in-the-loop
+              </div>
+              <h3>
+                Officer Review Queue
+              </h3>
+            </div>
+            <span
+              id="gvQueueCount"
+              class="gv-chip gv-chip-alert"
+            >
+              0 unresolved
+            </span>
+          </div>
+
+          <div
+            id="godReviewQueue"
+            class="gv-queue"
+          >
+            <div class="gv-empty">
+              Loading review queue...
+            </div>
+          </div>
+
+        </article>
+
+      </section>
+
+
+      <!-- DISTRIBUTION + MODEL COVERAGE -->
+
+      <section class="gv-layout">
+
+        <article class="gv-panel">
+
+          <div class="gv-panel-head">
+            <div>
+              <div class="gv-panel-kicker">
+                Stored AI outputs
+              </div>
+              <h3>
+                Disease / Condition Distribution
+              </h3>
+            </div>
+          </div>
+
+          <div
+            id="godDiseaseDistribution"
+            class="gv-bars"
+          >
+            <div class="gv-empty">
+              No distribution loaded.
+            </div>
+          </div>
+
+        </article>
+
+
+        <article class="gv-panel">
+
+          <div class="gv-panel-head">
+            <div>
+              <div class="gv-panel-kicker">
+                Safe model routing
+              </div>
+              <h3>
+                Crop & Model Coverage
+              </h3>
+            </div>
+          </div>
+
+          <div
+            id="godModelCoverage"
+            class="gv-model-grid"
+          >
+            <div class="gv-empty">
+              No model coverage loaded.
+            </div>
+          </div>
+
+        </article>
+
+      </section>
+
+
+      <!-- RAG + EVIDENCE QUALITY -->
+
+      <section class="gv-layout">
+
+        <article class="gv-panel">
+
+          <div class="gv-panel-head">
+            <div>
+              <div class="gv-panel-kicker">
+                AI safety layer
+              </div>
+              <h3>
+                RAG / Guidance Safety
+              </h3>
+            </div>
+          </div>
+
+          <div
+            id="godRagSafety"
+            class="gv-bars"
+          >
+            <div class="gv-empty">
+              No RAG safety data loaded.
+            </div>
+          </div>
+
+        </article>
+
+
+        <article class="gv-panel">
+
+          <div class="gv-panel-head">
+            <div>
+              <div class="gv-panel-kicker">
+                Evidence intelligence
+              </div>
+              <h3>
+                Evidence Quality
+              </h3>
+            </div>
+          </div>
+
+          <div
+            id="godEvidenceQuality"
+            class="gv-bars"
+          >
+            <div class="gv-empty">
+              No evidence-quality data loaded.
+            </div>
+          </div>
+
+        </article>
+
+      </section>
+
+
+      <!-- REGIONAL SIGNALS -->
+
+      <section class="gv-panel gv-signals-panel">
+
+        <div class="gv-panel-head">
+
+          <div>
+            <div class="gv-panel-kicker">
+              Investigation support
+            </div>
+
+            <h3>
+              Regional Intelligence Signals
+            </h3>
+          </div>
+
+          <span class="gv-chip">
+            Not an outbreak declaration
+          </span>
+
+        </div>
 
         <div
-          class="stat-number"
-          id="statTotal"
+          id="godRegionalSignals"
+          class="gv-signals"
         >
-          0
+          <div class="gv-empty">
+            No regional signal analysis loaded.
+          </div>
         </div>
 
-        <div class="stat-label">
-          Total Reports
-        </div>
+      </section>
 
-      </div>
+    </main>
 
-
-      <div class="stat-card">
-
-        <div
-          class="stat-number"
-          id="statPending"
-        >
-          0
-        </div>
-
-        <div class="stat-label">
-          Pending Verification
-        </div>
-
-      </div>
-
-
-      <div class="stat-card">
-
-        <div
-          class="stat-number"
-          id="statReview"
-        >
-          0
-        </div>
-
-        <div class="stat-label">
-          Under Review
-        </div>
-
-      </div>
-
-
-      <div class="stat-card">
-
-        <div
-          class="stat-number"
-          id="statVerified"
-        >
-          0
-        </div>
-
-        <div class="stat-label">
-          Verified
-        </div>
-
-      </div>
-
-    </div>
-
-
-    <!-- =================================================== -->
-    <!-- SEARCH + FILTER -->
-    <!-- =================================================== -->
-
-    <div class="filter-bar">
-
-      <input
-        type="text"
-        id="searchInput"
-        placeholder="Search by Evidence ID, farmer, disease or crop..."
-      />
-
-
-      <select id="statusFilter">
-
-        <option value="">
-          All Statuses
-        </option>
-
-        <option value="Pending">
-          Pending
-        </option>
-
-        <option value="Under Review">
-          Under Review
-        </option>
-
-        <option value="Verified">
-          Verified
-        </option>
-
-        <option value="Rejected">
-          Rejected
-        </option>
-
-      </select>
-
-    </div>
-
-
-    <!-- =================================================== -->
-    <!-- REPORT TABLE -->
-    <!-- =================================================== -->
-
-    <div
-      class="card"
-      style="padding:0;"
-    >
-
-      <div id="reportTable">
-
-        <div class="empty-state">
-          Loading reports...
-        </div>
-
-      </div>
-
-    </div>
-
-
-    <!-- =================================================== -->
-    <!-- IMPORTANT MODEL NOTE -->
-    <!-- =================================================== -->
-
-    <div
-      class="card"
-      style="margin-top:20px;"
-    >
-
-      <div class="card-title">
-        AI Assessment Note
-      </div>
-
-      <p class="muted">
-
-        The current TensorFlow model performs onion
-        disease/pest classification.
-
-        It does not estimate crop-loss percentage.
-
-        Officer verification remains mandatory for
-        official decisions.
-
-      </p>
-
-    </div>
-
-  </main>
+  </div>
 
 
   <!-- ===================================================== -->
@@ -286,8 +702,18 @@
   <!-- Real FastAPI API layer -->
   <script src="../js/api.js"></script>
 
-  <!-- Officer logic -->
+  <!-- Existing Officer logic -->
   <script src="../js/officer.js"></script>
+
+  <!-- Map library for officer-only GPS visualization -->
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+
+  <!-- Isolated Regional Intelligence logic -->
+  <script src="../js/god-view.js"></script>
 
 
   <script>
@@ -297,6 +723,13 @@
       function () {
 
         initOfficerDashboard();
+
+        if (
+          typeof initGodViewDashboard ===
+          "function"
+        ) {
+          initGodViewDashboard();
+        }
 
       }
     );

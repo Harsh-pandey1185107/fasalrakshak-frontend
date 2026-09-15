@@ -1,14 +1,15 @@
 /* ==========================================================================
    officer.js
    FasalRakshak AI
-   Real Officer Dashboard + Evidence Image + RAG + Human Verification
+   Role 5 Officer Dashboard integrated with Role 4 backend intelligence
    ========================================================================== */
 
 let officerReports = [];
+let officerCases = [];
 
 
 /* ==========================================================================
-   SAFE HTML HELPERS
+   SAFE HELPERS
    ========================================================================== */
 
 function escapeHTML(value) {
@@ -26,33 +27,555 @@ function escapeAttribute(value) {
 }
 
 
-/* ==========================================================================
-   BACKEND URL HELPER
+function safeExternalURL(value) {
+    const text = String(value || "").trim();
 
-   API_BASE_URL from api.js:
-   https://fasalrakshak-ai-backend.onrender.com/api/v1
+    return /^https?:\/\//i.test(text)
+        ? text
+        : null;
+}
 
-   Uploaded images:
-   https://fasalrakshak-ai-backend.onrender.com/uploads/filename.jpg
-   ========================================================================== */
 
 function getBackendBaseURL() {
-
-    if (
-        typeof API_BASE_URL === "string"
-    ) {
+    if (typeof API_BASE_URL === "string") {
         return API_BASE_URL.replace(
             /\/api\/v1\/?$/,
             ""
         );
     }
 
-    return "https://fasalrakshak-ai-backend.onrender.com";
+    return "http://127.0.0.1:8000";
+}
+
+
+function readQueryParam(name) {
+    if (typeof getQueryParam === "function") {
+        return getQueryParam(name);
+    }
+
+    return new URLSearchParams(
+        window.location.search
+    ).get(name);
+}
+
+
+function formatDateSafe(value) {
+    if (!value) {
+        return "—";
+    }
+
+    if (typeof formatDateTime === "function") {
+        try {
+            return formatDateTime(value);
+        }
+        catch (_) {
+        }
+    }
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return String(value);
+    }
+
+    return date.toLocaleString();
+}
+
+
+function statusBadgeSafe(status) {
+    if (typeof statusBadgeHTML === "function") {
+        try {
+            return statusBadgeHTML(
+                status || "Pending"
+            );
+        }
+        catch (_) {
+        }
+    }
+
+    return `
+        <span
+            style="
+                display:inline-block;
+                padding:6px 10px;
+                border-radius:999px;
+                background:#eef2f7;
+                font-size:12px;
+                font-weight:700;
+            "
+        >
+            ${escapeHTML(
+                status || "Pending"
+            )}
+        </span>
+    `;
+}
+
+
+function valueOrDash(value) {
+    return (
+        value === null ||
+        value === undefined ||
+        value === ""
+    )
+        ? "—"
+        : value;
 }
 
 
 /* ==========================================================================
-   1. OFFICER DASHBOARD
+   CASE GROUPING
+   ========================================================================== */
+
+function reportTimeValue(report) {
+    const raw =
+        report?.captured_at ||
+        report?.created_at ||
+        report?.uploaded_at ||
+        "";
+
+    const parsed = Date.parse(raw);
+
+    return Number.isNaN(parsed)
+        ? 0
+        : parsed;
+}
+
+
+function getCaseKey(report) {
+    return report?.report_id
+        ? String(report.report_id)
+        : `legacy:${report?.evidence_id}`;
+}
+
+
+function choosePrimaryEvidence(items) {
+    const sorted =
+        [...items].sort(
+            (a, b) =>
+                reportTimeValue(b) -
+                reportTimeValue(a)
+        );
+
+    return (
+        sorted.find(
+            item =>
+                item.assessment &&
+                typeof item.assessment === "object"
+        ) ||
+        sorted[0]
+    );
+}
+
+
+function deriveCaseStatus(items) {
+    const statuses =
+        items.map(
+            item =>
+                item.status ||
+                "Pending"
+        );
+
+    if (statuses.includes("Under Review")) {
+        return "Under Review";
+    }
+
+    if (statuses.includes("Pending")) {
+        return "Pending";
+    }
+
+    if (
+        statuses.length > 0 &&
+        statuses.every(
+            status => status === "Verified"
+        )
+    ) {
+        return "Verified";
+    }
+
+    if (
+        statuses.length > 0 &&
+        statuses.every(
+            status => status === "Rejected"
+        )
+    ) {
+        return "Rejected";
+    }
+
+    const newest =
+        [...items].sort(
+            (a, b) =>
+                reportTimeValue(b) -
+                reportTimeValue(a)
+        )[0];
+
+    return newest?.status || "Pending";
+}
+
+
+function buildOfficerCases(reports) {
+    const groups = new Map();
+
+    for (const report of reports) {
+
+        const key = getCaseKey(report);
+
+        if (!groups.has(key)) {
+            groups.set(
+                key,
+                {
+                    key: key,
+                    report_id:
+                        report.report_id ||
+                        null,
+                    evidence: []
+                }
+            );
+        }
+
+        groups
+            .get(key)
+            .evidence
+            .push(report);
+    }
+
+
+    return [...groups.values()]
+        .map(
+            caseItem => {
+
+                caseItem.evidence.sort(
+                    (a, b) =>
+                        reportTimeValue(a) -
+                        reportTimeValue(b)
+                );
+
+                caseItem.primary =
+                    choosePrimaryEvidence(
+                        caseItem.evidence
+                    );
+
+                caseItem.status =
+                    deriveCaseStatus(
+                        caseItem.evidence
+                    );
+
+                return caseItem;
+            }
+        )
+        .sort(
+            (a, b) =>
+                reportTimeValue(
+                    b.primary
+                ) -
+                reportTimeValue(
+                    a.primary
+                )
+        );
+}
+
+
+function caseSearchText(caseItem) {
+    const values = [
+        caseItem.report_id,
+        caseItem.key,
+        caseItem.status
+    ];
+
+    for (const report of caseItem.evidence) {
+
+        values.push(
+            report.evidence_id,
+            report.farmer_name,
+            report.username,
+            report.phone,
+            report.crop,
+            report.damage_type,
+            report.description,
+            report.officer_diagnosis,
+            report.officer_remark,
+            report.offline_image_id
+        );
+    }
+
+    return values
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+}
+
+
+/* ==========================================================================
+   INTELLIGENCE HELPERS
+   ========================================================================== */
+
+function getTrust(report) {
+
+    const assessment =
+        report?.assessment || {};
+
+    const trust =
+        assessment.evidence_trust &&
+        typeof assessment.evidence_trust === "object"
+            ? assessment.evidence_trust
+            : {};
+
+    return {
+        score:
+            trust.trust_score ??
+            null,
+
+        level:
+            trust.trust_level ||
+            "UNKNOWN",
+
+        priority:
+            trust.officer_priority ||
+            "UNKNOWN",
+
+        usable:
+            trust.evidence_usable ??
+            null,
+
+        human:
+            trust.human_verification_required ??
+            assessment.human_verification_required ??
+            true,
+
+        reasons:
+            Array.isArray(trust.reasons)
+                ? trust.reasons
+                : [],
+
+        warnings:
+            Array.isArray(trust.warnings)
+                ? trust.warnings
+                : []
+    };
+}
+
+
+function getDuplicate(report) {
+
+    const assessment =
+        report?.assessment || {};
+
+    const duplicateData =
+        assessment.duplicate_detection &&
+        typeof assessment.duplicate_detection === "object"
+            ? assessment.duplicate_detection
+            : {};
+
+    const type =
+        duplicateData.duplicate_type ||
+        report?.duplicate_status ||
+        "unknown";
+
+    return {
+        duplicate:
+            duplicateData.duplicate ??
+            (
+                type === "exact" ||
+                type === "near_duplicate"
+            ),
+
+        type: type,
+
+        distance:
+            duplicateData.hamming_distance ??
+            null,
+
+        risk:
+            duplicateData.risk_level ||
+            "unknown",
+
+        manual:
+            duplicateData.manual_review_required ??
+            (
+                type === "exact" ||
+                type === "near_duplicate"
+            ),
+
+        reason:
+            duplicateData.reason ||
+            null,
+
+        fraud:
+            duplicateData.fraud_determination ||
+            "not_determined"
+    };
+}
+
+
+function getRag(report) {
+
+    const assessment =
+        report?.assessment || {};
+
+    const gate =
+        assessment.rag_safety &&
+        typeof assessment.rag_safety === "object"
+            ? assessment.rag_safety
+            : {};
+
+    return {
+        allowed:
+            gate.rag_allowed ??
+            null,
+
+        status:
+            gate.rag_status ||
+            (
+                assessment.grounded === true
+                    ? "GROUNDED"
+                    : "UNAVAILABLE"
+            ),
+
+        mode:
+            gate.explanation_mode ||
+            null,
+
+        farmerMessage:
+            gate.farmer_message ||
+            assessment.explanation ||
+            null,
+
+        officerMessage:
+            gate.officer_message ||
+            null,
+
+        symptoms:
+            Array.isArray(
+                assessment.symptoms
+            )
+                ? assessment.symptoms
+                : [],
+
+        actions:
+            Array.isArray(
+                assessment.recommended_actions
+            )
+                ? assessment.recommended_actions
+                : [],
+
+        sourceName:
+            assessment.source_name ||
+            null,
+
+        sourceURL:
+            safeExternalURL(
+                assessment.source_url
+            ),
+
+        grounded:
+            assessment.grounded ??
+            null,
+
+        human:
+            assessment.human_verification_required ??
+            true
+    };
+}
+
+
+function getGradCam(report) {
+
+    const assessment =
+        report?.assessment || {};
+
+    const raw =
+        assessment.gradcam ||
+        assessment.grad_cam ||
+        report?.gradcam ||
+        report?.grad_cam ||
+        null;
+
+    if (
+        !raw ||
+        typeof raw !== "object"
+    ) {
+        return null;
+    }
+
+    return {
+        status:
+            raw.status ||
+            "AVAILABLE",
+
+        image:
+            raw.overlay_url ||
+            raw.overlay_relative_path ||
+            raw.image_url ||
+            null,
+
+        explanation:
+            raw.explanation ||
+            raw.reason ||
+            null,
+
+        layer:
+            raw.feature_layer ||
+            null
+    };
+}
+
+
+/* ==========================================================================
+   OFFICER LOGIN
+   ========================================================================== */
+
+async function ensureOfficerLogin(
+    officerIdentity = null
+) {
+
+    let token = getOfficerToken();
+
+    if (token) {
+        return token;
+    }
+
+    const username =
+        window.prompt(
+            "Officer username:"
+        );
+
+    if (!username) {
+        throw new Error(
+            "Officer username is required."
+        );
+    }
+
+    const password =
+        window.prompt(
+            "Officer password:"
+        );
+
+    if (!password) {
+        throw new Error(
+            "Officer password is required."
+        );
+    }
+
+    const login =
+        await loginOfficer(
+            username.trim(),
+            password
+        );
+
+    if (officerIdentity) {
+
+        officerIdentity.textContent =
+            login.full_name ||
+            login.username ||
+            "Officer";
+    }
+
+    return login.access_token;
+}
+
+
+/* ==========================================================================
+   OFFICER DASHBOARD
    ========================================================================== */
 
 async function initOfficerDashboard() {
@@ -88,161 +611,6 @@ async function initOfficerDashboard() {
         );
 
 
-    /* ----------------------------------------------------------------------
-       OFFICER LOGIN
-       ---------------------------------------------------------------------- */
-
-    async function ensureOfficerLogin() {
-
-        const existingToken =
-            getOfficerToken();
-
-
-        if (existingToken) {
-            return existingToken;
-        }
-
-
-        const username =
-            window.prompt(
-                "Officer username:"
-            );
-
-
-        if (!username) {
-            throw new Error(
-                "Officer username is required."
-            );
-        }
-
-
-        const password =
-            window.prompt(
-                "Officer password:"
-            );
-
-
-        if (!password) {
-            throw new Error(
-                "Officer password is required."
-            );
-        }
-
-
-        const login =
-            await loginOfficer(
-                username.trim(),
-                password
-            );
-
-
-        if (officerIdentity) {
-
-            officerIdentity.textContent =
-                login.full_name ||
-                login.username ||
-                "Officer";
-
-        }
-
-
-        return login.access_token;
-    }
-
-
-    /* ----------------------------------------------------------------------
-       LOAD REPORTS
-       ---------------------------------------------------------------------- */
-
-    async function loadReports() {
-
-        try {
-
-            if (dashboardStatus) {
-                dashboardStatus.textContent =
-                    "Connecting to backend...";
-            }
-
-
-            await ensureOfficerLogin();
-
-
-            if (dashboardStatus) {
-                dashboardStatus.textContent =
-                    "Loading live farmer reports...";
-            }
-
-
-            const reports =
-                await getOfficerReports();
-
-
-            officerReports =
-                Array.isArray(reports)
-                    ? reports
-                    : [reports];
-
-
-            renderStats();
-
-            renderTable();
-
-
-            if (dashboardStatus) {
-
-                dashboardStatus.textContent =
-                    `Connected · ${officerReports.length} report(s) loaded`;
-
-            }
-
-        }
-
-        catch (error) {
-
-            console.error(
-                "Officer dashboard error:",
-                error
-            );
-
-
-            if (dashboardStatus) {
-
-                dashboardStatus.textContent =
-                    `Error: ${error.message}`;
-
-            }
-
-
-            const tableEl =
-                document.getElementById(
-                    "reportTable"
-                );
-
-
-            if (tableEl) {
-
-                tableEl.innerHTML = `
-
-                    <div class="empty-state">
-
-                        ${escapeHTML(
-                            error.message
-                        )}
-
-                    </div>
-
-                `;
-
-            }
-
-        }
-    }
-
-
-    /* ----------------------------------------------------------------------
-       DASHBOARD STATS
-       ---------------------------------------------------------------------- */
-
     function renderStats() {
 
         const total =
@@ -265,53 +633,42 @@ async function initOfficerDashboard() {
                 "statVerified"
             );
 
-
         if (total) {
-
             total.textContent =
-                officerReports.length;
-
+                officerCases.length;
         }
-
 
         if (pending) {
 
             pending.textContent =
-                officerReports.filter(
-                    report =>
-                        report.status === "Pending"
+                officerCases.filter(
+                    caseItem =>
+                        caseItem.status ===
+                        "Pending"
                 ).length;
-
         }
-
 
         if (review) {
 
             review.textContent =
-                officerReports.filter(
-                    report =>
-                        report.status === "Under Review"
+                officerCases.filter(
+                    caseItem =>
+                        caseItem.status ===
+                        "Under Review"
                 ).length;
-
         }
-
 
         if (verified) {
 
             verified.textContent =
-                officerReports.filter(
-                    report =>
-                        report.status === "Verified"
+                officerCases.filter(
+                    caseItem =>
+                        caseItem.status ===
+                        "Verified"
                 ).length;
-
         }
-
     }
 
-
-    /* ----------------------------------------------------------------------
-       REPORT TABLE
-       ---------------------------------------------------------------------- */
 
     function renderTable() {
 
@@ -320,144 +677,97 @@ async function initOfficerDashboard() {
                 "reportTable"
             );
 
-
-        if (!tableEl) return;
-
+        if (!tableEl) {
+            return;
+        }
 
         const query =
             searchInput
-                ? searchInput.value
+                ? searchInput
+                    .value
                     .trim()
                     .toLowerCase()
                 : "";
-
 
         const selectedStatus =
             statusFilter
                 ? statusFilter.value
                 : "";
 
-
         let filtered =
-            [...officerReports];
-
-
-        /* Search */
+            [...officerCases];
 
         if (query) {
 
             filtered =
                 filtered.filter(
-                    report => {
-
-                        const searchable = [
-
-                            report.evidence_id,
-
-                            report.farmer_name,
-
-                            report.username,
-
-                            report.crop,
-
-                            report.damage_type,
-
-                            report.description,
-
-                            report.phone
-
-                        ]
-
-                            .filter(Boolean)
-
-                            .join(" ")
-
-                            .toLowerCase();
-
-
-                        return searchable.includes(
-                            query
-                        );
-
-                    }
+                    caseItem =>
+                        caseSearchText(
+                            caseItem
+                        ).includes(query)
                 );
-
         }
-
-
-        /* Status filter */
 
         if (selectedStatus) {
 
             filtered =
                 filtered.filter(
-                    report =>
-                        report.status ===
+                    caseItem =>
+                        caseItem.status ===
                         selectedStatus
                 );
-
         }
 
-
-        /* Empty */
-
-        if (
-            filtered.length === 0
-        ) {
+        if (filtered.length === 0) {
 
             tableEl.innerHTML = `
-
                 <div class="empty-state">
-
-                    No reports match your search/filter.
-
+                    No cases match your search/filter.
                 </div>
-
             `;
 
             return;
-
         }
 
-
-        /* Render */
-
         tableEl.innerHTML =
-
             filtered.map(
-                report => {
+                caseItem => {
+
+                    const primary =
+                        caseItem.primary || {};
 
                     const assessment =
-                        report.assessment || {};
+                        primary.assessment || {};
 
+                    const farmer =
+                        primary.farmer_name ||
+                        primary.username ||
+                        "Unknown Farmer";
 
                     const confidence =
                         assessment.confidence ??
                         "—";
 
-
                     const risk =
                         assessment.risk_level ||
                         "—";
 
-
                     const prediction =
-                        report.damage_type ||
+                        assessment.prediction ||
+                        primary.damage_type ||
                         "Assessment pending";
 
+                    const caseLabel =
+                        caseItem.report_id ||
+                        primary.evidence_id;
 
-                    const farmerName =
-                        report.farmer_name ||
-                        report.username ||
-                        "Unknown Farmer";
-
+                    const imageCount =
+                        caseItem.evidence.length;
 
                     return `
-
                         <a
-
                             href="report-detail.html?id=${encodeURIComponent(
-                                report.evidence_id
+                                primary.evidence_id
                             )}"
 
                             class="report-row"
@@ -467,8 +777,8 @@ async function initOfficerDashboard() {
                                 justify-content:space-between;
                                 align-items:center;
                                 text-decoration:none;
+                                gap:16px;
                             "
-
                         >
 
                             <div>
@@ -476,13 +786,13 @@ async function initOfficerDashboard() {
                                 <div class="report-id">
 
                                     ${escapeHTML(
-                                        report.evidence_id
+                                        caseLabel
                                     )}
 
                                     ·
 
                                     ${escapeHTML(
-                                        farmerName
+                                        farmer
                                     )}
 
                                 </div>
@@ -491,7 +801,7 @@ async function initOfficerDashboard() {
                                 <div class="report-meta">
 
                                     ${escapeHTML(
-                                        report.crop ||
+                                        primary.crop ||
                                         "Unknown Crop"
                                     )}
 
@@ -506,7 +816,9 @@ async function initOfficerDashboard() {
                                     ${
                                         confidence === "—"
                                             ? "—"
-                                            : `${confidence}%`
+                                            : `${escapeHTML(
+                                                confidence
+                                            )}%`
                                     }
 
                                     · Risk
@@ -517,53 +829,115 @@ async function initOfficerDashboard() {
 
                                     ·
 
-                                    ${formatDateTime(
-                                        report.created_at
+                                    ${imageCount}
+
+                                    evidence image${
+                                        imageCount === 1
+                                            ? ""
+                                            : "s"
+                                    }
+
+                                    ·
+
+                                    ${escapeHTML(
+                                        formatDateSafe(
+                                            primary.created_at ||
+                                            primary.captured_at
+                                        )
                                     )}
 
                                 </div>
 
-
-                                ${
-                                    report.description
-
-                                        ? `
-
-                                            <div class="report-meta">
-
-                                                ${escapeHTML(
-                                                    report.description
-                                                )}
-
-                                            </div>
-
-                                        `
-
-                                        : ""
-                                }
-
                             </div>
 
 
-                            ${statusBadgeHTML(
-                                report.status ||
-                                "Pending"
+                            ${statusBadgeSafe(
+                                caseItem.status
                             )}
 
                         </a>
-
                     `;
-
                 }
-
             ).join("");
-
     }
 
 
-    /* ----------------------------------------------------------------------
-       EVENTS
-       ---------------------------------------------------------------------- */
+    async function loadReports() {
+
+        try {
+
+            if (dashboardStatus) {
+
+                dashboardStatus.textContent =
+                    "Connecting to backend...";
+            }
+
+            await ensureOfficerLogin(
+                officerIdentity
+            );
+
+            if (dashboardStatus) {
+
+                dashboardStatus.textContent =
+                    "Loading live farmer cases...";
+            }
+
+            const reports =
+                await getOfficerReports();
+
+            officerReports =
+                Array.isArray(reports)
+                    ? reports
+                    : [reports];
+
+            officerCases =
+                buildOfficerCases(
+                    officerReports
+                );
+
+            renderStats();
+
+            renderTable();
+
+            if (dashboardStatus) {
+
+                dashboardStatus.textContent =
+                    `Connected · ${officerCases.length} case(s) · ${officerReports.length} evidence item(s)`;
+            }
+
+        }
+
+        catch (error) {
+
+            console.error(
+                "Officer dashboard error:",
+                error
+            );
+
+            if (dashboardStatus) {
+
+                dashboardStatus.textContent =
+                    `Error: ${error.message}`;
+            }
+
+            const tableEl =
+                document.getElementById(
+                    "reportTable"
+                );
+
+            if (tableEl) {
+
+                tableEl.innerHTML = `
+                    <div class="empty-state">
+                        ${escapeHTML(
+                            error.message
+                        )}
+                    </div>
+                `;
+            }
+        }
+    }
+
 
     if (searchInput) {
 
@@ -571,9 +945,7 @@ async function initOfficerDashboard() {
             "input",
             renderTable
         );
-
     }
-
 
     if (statusFilter) {
 
@@ -581,9 +953,7 @@ async function initOfficerDashboard() {
             "change",
             renderTable
         );
-
     }
-
 
     if (refreshBtn) {
 
@@ -591,9 +961,7 @@ async function initOfficerDashboard() {
             "click",
             loadReports
         );
-
     }
-
 
     if (logoutBtn) {
 
@@ -603,624 +971,921 @@ async function initOfficerDashboard() {
 
             () => {
 
-                localStorage.removeItem(
-                    "officer_token"
-                );
-
+                removeOfficerToken();
 
                 window.location.href =
                     "../index.html";
-
             }
-
         );
-
     }
-
 
     await loadReports();
 }
 
 
 /* ==========================================================================
-   2. OFFICER REPORT DETAIL
+   REPORT DETAIL / CASE VIEW
    ========================================================================== */
 
 async function renderReportDetail() {
 
     const id =
-        getQueryParam(
+        readQueryParam(
             "id"
         );
-
 
     const container =
         document.getElementById(
             "detailContainer"
         );
 
-
-    if (!container) return;
-
+    if (!container) {
+        return;
+    }
 
     if (!id) {
 
         container.innerHTML = `
-
             <div class="empty-state">
-
                 Evidence ID missing.
-
             </div>
-
         `;
 
         return;
-
     }
-
 
     try {
 
-        /* ------------------------------------------------------------------
-           Ensure officer authentication
-           ------------------------------------------------------------------ */
+        await ensureOfficerLogin();
 
-        let token =
-            getOfficerToken();
+        let reports =
+            await getOfficerReports();
 
+        reports =
+            Array.isArray(reports)
+                ? reports
+                : [reports];
 
-        if (!token) {
+        const selected =
+            reports.find(
+                report =>
+                    report.evidence_id === id ||
+                    report.report_id === id
+            );
 
-            const username =
-                window.prompt(
-                    "Officer username:"
-                );
-
-
-            if (!username) {
-
-                throw new Error(
-                    "Officer username is required."
-                );
-
-            }
-
-
-            const password =
-                window.prompt(
-                    "Officer password:"
-                );
-
-
-            if (!password) {
-
-                throw new Error(
-                    "Officer password is required."
-                );
-
-            }
-
-
-            const login =
-                await loginOfficer(
-                    username.trim(),
-                    password
-                );
-
-
-            token =
-                login.access_token;
-
+        if (!selected) {
+            throw new Error(
+                "Report not found."
+            );
         }
 
+        const caseKey =
+            getCaseKey(
+                selected
+            );
 
-        /* ------------------------------------------------------------------
-           Get ONE real report
-           ------------------------------------------------------------------ */
-
-        let report;
-
-
-        if (
-            typeof getOfficerReport ===
-            "function"
-        ) {
-
-            report =
-                await getOfficerReport(
-                    id
+        const caseEvidence =
+            reports
+                .filter(
+                    report =>
+                        getCaseKey(report) ===
+                        caseKey
+                )
+                .sort(
+                    (a, b) =>
+                        reportTimeValue(a) -
+                        reportTimeValue(b)
                 );
 
-        }
-
-        else {
-
-            let reports =
-                await getOfficerReports();
-
-
-            if (
-                !Array.isArray(reports)
-            ) {
-
-                reports = [reports];
-
-            }
-
-
-            report =
-                reports.find(
-                    item =>
-                        item.evidence_id ===
-                        id
-                );
-
-        }
-
-
-        if (!report) {
-
-            container.innerHTML = `
-
-                <div class="empty-state">
-
-                    Report not found.
-
-                </div>
-
-            `;
-
-            return;
-
-        }
-
+        const primary =
+            choosePrimaryEvidence(
+                caseEvidence
+            );
 
         const assessment =
-            report.assessment || {};
+            primary.assessment || {};
 
+        const caseStatus =
+            deriveCaseStatus(
+                caseEvidence
+            );
+
+        const caseLabel =
+            selected.report_id ||
+            selected.evidence_id;
 
         const reportIdTag =
             document.getElementById(
                 "reportIdTag"
             );
 
-
         if (reportIdTag) {
-
             reportIdTag.textContent =
-                report.evidence_id;
-
+                caseLabel;
         }
 
 
-        /* ------------------------------------------------------------------
-           EVIDENCE IMAGE URL
-           ------------------------------------------------------------------ */
+        const histories =
+            await Promise.all(
 
-        const evidenceImageURL =
+                caseEvidence.map(
+                    async report => {
 
-            report.filename
+                        try {
 
-                ? `${getBackendBaseURL()}/uploads/${encodeURIComponent(
-                    report.filename
-                )}`
+                            const history =
+                                await getOfficerReviewHistory(
+                                    report.evidence_id
+                                );
 
-                : null;
+                            return {
+                                evidence_id:
+                                    report.evidence_id,
 
+                                history:
+                                    history
+                            };
 
-        /* ------------------------------------------------------------------
-           RAG arrays
-           ------------------------------------------------------------------ */
+                        }
 
-        const symptoms =
-            Array.isArray(
-                assessment.symptoms
-            )
+                        catch (error) {
 
-                ? assessment.symptoms
+                            return {
+                                evidence_id:
+                                    report.evidence_id,
 
-                : [];
+                                error:
+                                    error.message,
 
-
-        const actions =
-            Array.isArray(
-                assessment.recommended_actions
-            )
-
-                ? assessment.recommended_actions
-
-                : [];
-
-
-        /* ------------------------------------------------------------------
-           Evidence image HTML
-           ------------------------------------------------------------------ */
-
-        const evidenceImageHTML =
-
-            evidenceImageURL
-
-                ? `
-
-                    <div class="card">
-
-                        <div class="card-title">
-
-                            Submitted Crop Evidence
-
-                        </div>
+                                history:
+                                    null
+                            };
+                        }
+                    }
+                )
+            );
 
 
-                        <p class="muted mt-2">
+        const evidenceCardsHTML =
+            caseEvidence.map(
 
-                            Original crop image submitted
-                            by the farmer for AI assessment
-                            and officer verification.
+                (report, index) => {
 
-                        </p>
+                    const currentAssessment =
+                        report.assessment || {};
+
+                    const trust =
+                        getTrust(report);
+
+                    const duplicate =
+                        getDuplicate(report);
+
+                    const rag =
+                        getRag(report);
+
+                    const gradcam =
+                        getGradCam(report);
+
+                    const imageURL =
+                        report.filename
+                            ? `${getBackendBaseURL()}/uploads/${encodeURIComponent(
+                                report.filename
+                            )}`
+                            : null;
+
+                    const trustScore =
+                        trust.score === null
+                            ? "—"
+                            : `${escapeHTML(
+                                trust.score
+                            )}/100`;
+
+                    const duplicateText =
+                        duplicate.duplicate
+                            ? `${duplicate.type} duplicate · manual review required`
+                            : duplicate.type === "none"
+                                ? "No duplicate detected"
+                                : "Duplicate status unknown";
 
 
+                    const gradCamHTML =
+                        gradcam
+                            ? `
+                                <div class="card mt-3">
+
+                                    <div class="card-title">
+                                        Grad-CAM / XAI
+                                    </div>
+
+                                    <p class="mt-2">
+                                        <strong>Status:</strong>
+                                        ${escapeHTML(
+                                            gradcam.status
+                                        )}
+                                    </p>
+
+                                    ${
+                                        gradcam.layer
+                                            ? `
+                                                <p class="muted">
+                                                    Feature layer:
+                                                    ${escapeHTML(
+                                                        gradcam.layer
+                                                    )}
+                                                </p>
+                                            `
+                                            : ""
+                                    }
+
+                                    ${
+                                        gradcam.explanation
+                                            ? `
+                                                <p class="mt-2">
+                                                    ${escapeHTML(
+                                                        gradcam.explanation
+                                                    )}
+                                                </p>
+                                            `
+                                            : ""
+                                    }
+
+                                    ${
+                                        gradcam.image
+                                            ? `
+                                                <img
+
+                                                    src="${escapeAttribute(
+
+                                                        /^https?:\/\//i.test(
+                                                            gradcam.image
+                                                        )
+                                                            ? gradcam.image
+                                                            : `${getBackendBaseURL()}/${String(
+                                                                gradcam.image
+                                                            ).replace(
+                                                                /^\//,
+                                                                ""
+                                                            )}`
+                                                    )}"
+
+                                                    alt="Grad-CAM explanation"
+
+                                                    style="
+                                                        width:100%;
+                                                        max-width:620px;
+                                                        margin-top:12px;
+                                                        border-radius:10px;
+                                                    "
+                                                />
+                                            `
+                                            : ""
+                                    }
+
+                                    <p class="muted mt-2">
+                                        Explainability aid only.
+                                        Human verification remains required.
+                                    </p>
+
+                                </div>
+                            `
+                            : "";
+
+
+                    return `
                         <div
+                            class="card mt-3"
                             style="
-                                margin-top:14px;
-                                width:100%;
-                                display:flex;
-                                justify-content:center;
+                                border-left:4px solid var(--color-border);
                             "
                         >
 
-                            <img
+                            <div class="card-title">
 
-                                src="${escapeAttribute(
-                                    evidenceImageURL
-                                )}"
-
-                                alt="Farmer submitted crop evidence"
-
-                                style="
-                                    display:block;
-                                    width:100%;
-                                    max-width:620px;
-                                    max-height:520px;
-                                    object-fit:contain;
-                                    border-radius:12px;
-                                    border:1px solid var(--color-border);
-                                    background:#f5f5f5;
-                                "
-
-                                onerror="
-                                    this.style.display='none';
-                                    this.nextElementSibling.style.display='block';
-                                "
-
-                            />
-
-
-                            <div
-
-                                class="empty-state"
-
-                                style="display:none;"
-
-                            >
-
-                                Crop evidence image could
-                                not be loaded.
+                                Evidence
+                                ${index + 1}
+                                of
+                                ${caseEvidence.length}
 
                             </div>
 
-                        </div>
+
+                            <p class="muted mt-2">
+
+                                Evidence ID:
+
+                                ${escapeHTML(
+                                    report.evidence_id
+                                )}
+
+                                ${
+                                    report.offline_image_id
+                                        ? ` · Offline image ID:
+                                           ${escapeHTML(
+                                               report.offline_image_id
+                                           )}`
+                                        : ""
+                                }
+
+                            </p>
 
 
-                        <a
-
-                            href="${escapeAttribute(
-                                evidenceImageURL
-                            )}"
-
-                            target="_blank"
-
-                            rel="noopener noreferrer"
-
-                            class="btn btn-outline mt-3"
-
-                        >
-
-                            🔍 Open Original Evidence Image
-
-                        </a>
-
-                    </div>
-
-                `
-
-                : `
-
-                    <div class="card">
-
-                        <div class="card-title">
-
-                            Submitted Crop Evidence
-
-                        </div>
-
-                        <p class="muted mt-2">
-
-                            No evidence image filename
-                            is available for this report.
-
-                        </p>
-
-                    </div>
-
-                `;
-
-
-        /* ------------------------------------------------------------------
-           Symptoms HTML
-           ------------------------------------------------------------------ */
-
-        const symptomsHTML =
-
-            symptoms.length
-
-                ? `
-
-                    <div class="card mt-3">
-
-                        <div class="card-title">
-
-                            Observed Disease Symptoms
-
-                        </div>
-
-
-                        <ul
-                            style="
-                                padding-left:20px;
-                                margin-top:12px;
-                            "
-                        >
-
-                            ${symptoms
-
-                                .map(
-
-                                    symptom => `
-
-                                        <li
+                            ${
+                                imageURL
+                                    ? `
+                                        <div
                                             style="
-                                                margin-bottom:8px;
+                                                margin-top:14px;
+                                                text-align:center;
                                             "
                                         >
 
-                                            ${escapeHTML(
-                                                symptom
-                                            )}
+                                            <img
+                                                src="${escapeAttribute(
+                                                    imageURL
+                                                )}"
 
-                                        </li>
+                                                alt="Farmer submitted crop evidence"
 
-                                    `
+                                                style="
+                                                    width:100%;
+                                                    max-width:620px;
+                                                    max-height:500px;
+                                                    object-fit:contain;
+                                                    border-radius:12px;
+                                                    border:1px solid var(--color-border);
+                                                    background:#f5f5f5;
+                                                "
+                                            />
 
-                                )
-
-                                .join("")}
-
-                        </ul>
-
-                    </div>
-
-                `
-
-                : "";
-
-
-        /* ------------------------------------------------------------------
-           Recommended actions
-           ------------------------------------------------------------------ */
-
-        const actionsHTML =
-
-            actions.length
-
-                ? `
-
-                    <div class="card mt-3">
-
-                        <div class="card-title">
-
-                            Recommended Next Actions
-
-                        </div>
+                                        </div>
 
 
-                        <ul
-                            style="
-                                padding-left:20px;
-                                margin-top:12px;
-                            "
-                        >
+                                        <a
+                                            href="${escapeAttribute(
+                                                imageURL
+                                            )}"
 
-                            ${actions
+                                            target="_blank"
 
-                                .map(
+                                            rel="noopener noreferrer"
 
-                                    action => `
-
-                                        <li
-                                            style="
-                                                margin-bottom:8px;
-                                            "
+                                            class="btn btn-outline mt-3"
                                         >
 
-                                            ${escapeHTML(
-                                                action
-                                            )}
+                                            Open Original Evidence Image
 
-                                        </li>
-
+                                        </a>
                                     `
-
-                                )
-
-                                .join("")}
-
-                        </ul>
-
-                    </div>
-
-                `
-
-                : "";
+                                    : `
+                                        <div class="empty-state mt-3">
+                                            No evidence image filename available.
+                                        </div>
+                                    `
+                            }
 
 
-        /* ------------------------------------------------------------------
-           Official source
-           ------------------------------------------------------------------ */
+                            <div class="metric-grid mt-3">
 
-        const sourceHTML =
+                                <div class="metric-box">
 
-            assessment.source_name
+                                    <div class="metric-value">
 
-                ? `
+                                        ${escapeHTML(
+                                            currentAssessment.prediction ||
+                                            report.damage_type ||
+                                            "—"
+                                        )}
 
-                    <div class="card mt-3">
+                                    </div>
 
-                        <div class="card-title">
+                                    <div class="metric-label">
+                                        AI Prediction
+                                    </div>
 
-                            Official Knowledge Source
+                                </div>
+
+
+                                <div class="metric-box">
+
+                                    <div class="metric-value">
+
+                                        ${currentAssessment.confidence ?? "—"}
+
+                                        ${
+                                            currentAssessment.confidence != null
+                                                ? "%"
+                                                : ""
+                                        }
+
+                                    </div>
+
+                                    <div class="metric-label">
+                                        Confidence
+                                    </div>
+
+                                </div>
+
+
+                                <div class="metric-box">
+
+                                    <div class="metric-value">
+                                        ${trustScore}
+                                    </div>
+
+                                    <div class="metric-label">
+                                        Evidence Trust
+                                    </div>
+
+                                </div>
+
+
+                                <div class="metric-box">
+
+                                    <div class="metric-value">
+
+                                        ${escapeHTML(
+                                            trust.level
+                                        )}
+
+                                    </div>
+
+                                    <div class="metric-label">
+                                        Trust Level
+                                    </div>
+
+                                </div>
+
+
+                                <div class="metric-box">
+
+                                    <div class="metric-value">
+
+                                        ${escapeHTML(
+                                            trust.priority
+                                        )}
+
+                                    </div>
+
+                                    <div class="metric-label">
+                                        Officer Priority
+                                    </div>
+
+                                </div>
+
+
+                                <div class="metric-box">
+
+                                    <div class="metric-value">
+
+                                        ${escapeHTML(
+                                            rag.status
+                                        )}
+
+                                    </div>
+
+                                    <div class="metric-label">
+                                        RAG Safety
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+
+                            <div class="card mt-3">
+
+                                <div class="card-title">
+                                    Evidence Integrity
+                                </div>
+
+
+                                <p class="mt-2">
+
+                                    <strong>Duplicate:</strong>
+
+                                    ${escapeHTML(
+                                        duplicateText
+                                    )}
+
+                                </p>
+
+
+                                ${
+                                    duplicate.distance !== null
+                                        ? `
+                                            <p class="muted">
+
+                                                dHash distance:
+
+                                                ${escapeHTML(
+                                                    duplicate.distance
+                                                )}
+
+                                            </p>
+                                        `
+                                        : ""
+                                }
+
+
+                                ${
+                                    duplicate.reason
+                                        ? `
+                                            <p class="muted">
+                                                ${escapeHTML(
+                                                    duplicate.reason
+                                                )}
+                                            </p>
+                                        `
+                                        : ""
+                                }
+
+
+                                <p class="muted">
+
+                                    Fraud determination:
+
+                                    ${escapeHTML(
+                                        duplicate.fraud
+                                    )}
+
+                                </p>
+
+                            </div>
+
+
+                            ${
+                                rag.farmerMessage ||
+                                rag.officerMessage
+                                    ? `
+                                        <div class="card mt-3">
+
+                                            <div class="card-title">
+                                                RAG / Explainable AI
+                                            </div>
+
+
+                                            ${
+                                                rag.farmerMessage
+                                                    ? `
+                                                        <p class="mt-2">
+
+                                                            <strong>
+                                                                Explanation:
+                                                            </strong>
+
+                                                            ${escapeHTML(
+                                                                rag.farmerMessage
+                                                            )}
+
+                                                        </p>
+                                                    `
+                                                    : ""
+                                            }
+
+
+                                            ${
+                                                rag.officerMessage
+                                                    ? `
+                                                        <p class="mt-2">
+
+                                                            <strong>
+                                                                Officer note:
+                                                            </strong>
+
+                                                            ${escapeHTML(
+                                                                rag.officerMessage
+                                                            )}
+
+                                                        </p>
+                                                    `
+                                                    : ""
+                                            }
+
+
+                                            <p class="muted mt-2">
+
+                                                Grounded:
+
+                                                ${
+                                                    rag.grounded === true
+                                                        ? "Yes"
+                                                        : rag.grounded === false
+                                                            ? "No"
+                                                            : "—"
+                                                }
+
+                                                · Human verification:
+
+                                                ${
+                                                    rag.human
+                                                        ? "Required"
+                                                        : "Not required"
+                                                }
+
+                                            </p>
+
+                                        </div>
+                                    `
+                                    : ""
+                            }
+
+
+                            ${
+                                rag.symptoms.length
+                                    ? `
+                                        <div class="card mt-3">
+
+                                            <div class="card-title">
+                                                Symptoms
+                                            </div>
+
+                                            <ul>
+
+                                                ${
+                                                    rag.symptoms
+                                                        .map(
+                                                            symptom =>
+                                                                `<li>${escapeHTML(
+                                                                    symptom
+                                                                )}</li>`
+                                                        )
+                                                        .join("")
+                                                }
+
+                                            </ul>
+
+                                        </div>
+                                    `
+                                    : ""
+                            }
+
+
+                            ${
+                                rag.actions.length
+                                    ? `
+                                        <div class="card mt-3">
+
+                                            <div class="card-title">
+                                                Recommended Actions
+                                            </div>
+
+                                            <ul>
+
+                                                ${
+                                                    rag.actions
+                                                        .map(
+                                                            action =>
+                                                                `<li>${escapeHTML(
+                                                                    action
+                                                                )}</li>`
+                                                        )
+                                                        .join("")
+                                                }
+
+                                            </ul>
+
+                                        </div>
+                                    `
+                                    : ""
+                            }
+
+
+                            ${
+                                rag.sourceName
+                                    ? `
+                                        <div class="card mt-3">
+
+                                            <div class="card-title">
+                                                Knowledge Source
+                                            </div>
+
+
+                                            <p class="mt-2">
+
+                                                ${escapeHTML(
+                                                    rag.sourceName
+                                                )}
+
+                                            </p>
+
+
+                                            ${
+                                                rag.sourceURL
+                                                    ? `
+                                                        <a
+                                                            class="btn btn-outline mt-2"
+
+                                                            href="${escapeAttribute(
+                                                                rag.sourceURL
+                                                            )}"
+
+                                                            target="_blank"
+
+                                                            rel="noopener noreferrer"
+                                                        >
+
+                                                            View Source
+
+                                                        </a>
+                                                    `
+                                                    : ""
+                                            }
+
+                                        </div>
+                                    `
+                                    : ""
+                            }
+
+
+                            ${gradCamHTML}
 
                         </div>
+                    `;
+                }
+            ).join("");
 
 
-                        <p class="mt-2">
+        const historyHTML =
+            histories.map(
+                item => {
 
-                            ${escapeHTML(
-                                assessment.source_name
-                            )}
+                    if (item.error) {
 
-                        </p>
+                        return `
+                            <div class="card mt-2">
 
+                                <strong>
+                                    ${escapeHTML(
+                                        item.evidence_id
+                                    )}
+                                </strong>
 
-                        ${
-                            assessment.source_url
+                                <p class="muted">
 
-                                ? `
+                                    History unavailable:
 
-                                    <a
+                                    ${escapeHTML(
+                                        item.error
+                                    )}
 
-                                        href="${escapeAttribute(
-                                            assessment.source_url
-                                        )}"
+                                </p>
 
-                                        target="_blank"
-
-                                        rel="noopener noreferrer"
-
-                                        class="btn btn-outline mt-2"
-
-                                    >
-
-                                        View Official Source
-
-                                    </a>
-
-                                `
-
-                                : `
-
-                                    <p class="muted mt-2">
-
-                                        Source URL not available.
-
-                                    </p>
-
-                                `
-                        }
-
-                    </div>
-
-                `
-
-                : "";
+                            </div>
+                        `;
+                    }
 
 
-        /* ------------------------------------------------------------------
-           RAG labels
-           ------------------------------------------------------------------ */
-
-        const groundedText =
-
-            assessment.grounded === true
-
-                ? "Grounded"
-
-                : assessment.grounded === false
-
-                    ? "Not Grounded"
-
-                    : "—";
+                    const reviews =
+                        Array.isArray(
+                            item.history?.reviews
+                        )
+                            ? item.history.reviews
+                            : [];
 
 
-        const humanVerificationText =
+                    return `
+                        <div class="card mt-2">
 
-            assessment
-                .human_verification_required ===
-                false
+                            <div class="card-title">
 
-                ? "Not Required"
+                                ${escapeHTML(
+                                    item.evidence_id
+                                )}
 
-                : "Required";
+                            </div>
 
 
-        /* ==================================================================
-           RENDER PAGE
-           ================================================================== */
+                            ${
+                                reviews.length
+                                    ? reviews.map(
+                                        review => `
+                                            <div
+                                                style="
+                                                    padding:10px 0;
+                                                    border-bottom:1px solid var(--color-border);
+                                                "
+                                            >
+
+                                                <strong>
+
+                                                    ${escapeHTML(
+                                                        review.decision ||
+                                                        "Decision"
+                                                    )}
+
+                                                </strong>
+
+
+                                                <div class="muted">
+
+                                                    Officer #
+
+                                                    ${escapeHTML(
+                                                        review.officer_id ??
+                                                        "—"
+                                                    )}
+
+                                                    ·
+
+                                                    ${escapeHTML(
+                                                        formatDateSafe(
+                                                            review.reviewed_at
+                                                        )
+                                                    )}
+
+                                                </div>
+
+
+                                                ${
+                                                    review.remark
+                                                        ? `
+                                                            <div class="mt-2">
+
+                                                                ${escapeHTML(
+                                                                    review.remark
+                                                                )}
+
+                                                            </div>
+                                                        `
+                                                        : ""
+                                                }
+
+                                            </div>
+                                        `
+                                    ).join("")
+                                    : `
+                                        <p class="muted mt-2">
+                                            No review-history entries yet.
+                                        </p>
+                                    `
+                            }
+
+                        </div>
+                    `;
+                }
+            ).join("");
+
+
+        const existingDiagnosis =
+            caseEvidence.find(
+                report =>
+                    report.officer_diagnosis
+            )?.officer_diagnosis ||
+            "";
+
+
+        const existingRemark =
+            caseEvidence.find(
+                report =>
+                    report.officer_remark
+            )?.officer_remark ||
+            "";
+
 
         container.innerHTML = `
-
-
-            <!-- ===========================================================
-                 FARMER / REPORT DETAILS
-                 =========================================================== -->
 
             <div class="card">
 
                 <h2>
 
                     ${escapeHTML(
-                        report.crop ||
+                        primary.crop ||
                         "Crop"
                     )}
 
-                    —
-
-                    ${escapeHTML(
-                        report.damage_type ||
-                        "Assessment Pending"
-                    )}
+                    — Officer Case
 
                 </h2>
 
 
                 <p class="muted mt-2">
 
-                    👤
+                    <strong>
+                        Case / Report ID:
+                    </strong>
 
                     ${escapeHTML(
-                        report.farmer_name ||
-                        report.username ||
+                        caseLabel
+                    )}
+
+                </p>
+
+
+                <p class="muted">
+
+                    Farmer:
+
+                    ${escapeHTML(
+                        primary.farmer_name ||
+                        primary.username ||
                         "Unknown Farmer"
                     )}
 
                     ${
-                        report.phone
-
-                            ? `· ${escapeHTML(
-                                report.phone
+                        primary.phone
+                            ? ` · ${escapeHTML(
+                                primary.phone
                             )}`
-
                             : ""
                     }
 
@@ -1229,47 +1894,23 @@ async function renderReportDetail() {
 
                 <p class="muted">
 
-                    📍
+                    Evidence images:
 
-                    ${report.latitude ?? "—"},
+                    ${caseEvidence.length}
 
-                    ${report.longitude ?? "—"}
+                    · Case status:
 
-                    &nbsp;·&nbsp;
-
-                    🕐
-
-                    ${formatDateTime(
-                        report.created_at
+                    ${escapeHTML(
+                        caseStatus
                     )}
 
                 </p>
 
 
-                ${
-                    report.description
-
-                        ? `
-
-                            <p class="mt-3">
-
-                                ${escapeHTML(
-                                    report.description
-                                )}
-
-                            </p>
-
-                        `
-
-                        : ""
-                }
-
-
                 <div class="mt-3">
 
-                    ${statusBadgeHTML(
-                        report.status ||
-                        "Pending"
+                    ${statusBadgeSafe(
+                        caseStatus
                     )}
 
                 </div>
@@ -1277,289 +1918,121 @@ async function renderReportDetail() {
             </div>
 
 
-            <!-- ===========================================================
-                 REAL FARMER IMAGE
-                 =========================================================== -->
+            <div class="card mt-3">
 
-            ${evidenceImageHTML}
-
-
-            <!-- ===========================================================
-                 AI + RAG ASSESSMENT
-                 =========================================================== -->
-
-            <div class="card ai-card">
-
-                <div class="ai-header">
-
-                    <span class="ai-badge">
-
-                        AI + RAG Assessment
-
-                    </span>
-
+                <div class="card-title">
+                    Human-in-the-Loop Separation
                 </div>
 
 
-                <div class="metric-grid">
-
-
-                    <div class="metric-box">
-
-                        <div class="metric-value">
-
-                            ${
-                                assessment.confidence !=
-                                null
-
-                                    ? `${assessment.confidence}%`
-
-                                    : "—"
-                            }
-
-                        </div>
-
-                        <div class="metric-label">
-
-                            Confidence
-
-                        </div>
-
-                    </div>
-
-
-                    <div class="metric-box">
-
-                        <div class="metric-value">
-
-                            ${
-                                assessment.evidence_valid ===
-                                true
-
-                                    ? "Valid"
-
-                                    : assessment.evidence_valid ===
-                                      false
-
-                                        ? "Retake"
-
-                                        : "—"
-                            }
-
-                        </div>
-
-                        <div class="metric-label">
-
-                            Evidence Status
-
-                        </div>
-
-                    </div>
-
-
-                    <div class="metric-box">
-
-                        <div class="metric-value">
-
-                            ${escapeHTML(
-                                assessment.risk_level ||
-                                "—"
-                            )}
-
-                        </div>
-
-                        <div class="metric-label">
-
-                            Risk Level
-
-                        </div>
-
-                    </div>
-
-
-                    <div class="metric-box">
-
-                        <div class="metric-value">
-
-                            ${escapeHTML(
-                                report.status ||
-                                "Pending"
-                            )}
-
-                        </div>
-
-                        <div class="metric-label">
-
-                            Officer Status
-
-                        </div>
-
-                    </div>
-
-
-                    <div class="metric-box">
-
-                        <div class="metric-value">
-
-                            ${groundedText}
-
-                        </div>
-
-                        <div class="metric-label">
-
-                            RAG Grounding
-
-                        </div>
-
-                    </div>
-
-
-                    <div class="metric-box">
-
-                        <div class="metric-value">
-
-                            ${humanVerificationText}
-
-                        </div>
-
-                        <div class="metric-label">
-
-                            Human Verification
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-
-                ${
-                    assessment.explanation
-
-                        ? `
-
-                            <div class="card mt-3">
-
-                                <div class="card-title">
-
-                                    AI / RAG Explanation
-
-                                </div>
-
-                                <p class="mt-2">
-
-                                    ${escapeHTML(
-                                        assessment.explanation
-                                    )}
-
-                                </p>
-
-                            </div>
-
-                        `
-
-                        : ""
-                }
-
-
-                <div class="disclaimer">
+                <p class="mt-2">
 
                     <strong>
-
-                        Human Verification Required.
-
+                        AI prediction:
                     </strong>
 
-                    This AI and RAG assessment is
-                    preliminary supporting evidence.
+                    ${escapeHTML(
+                        assessment.prediction ||
+                        primary.damage_type ||
+                        "—"
+                    )}
 
-                    Final verification must be
-                    completed by an authorized
-                    agricultural officer.
+                </p>
 
-                </div>
+
+                <p>
+
+                    <strong>
+                        Officer diagnosis:
+                    </strong>
+
+                    ${escapeHTML(
+                        existingDiagnosis ||
+                        "Not entered yet"
+                    )}
+
+                </p>
+
+
+                <p class="muted mt-2">
+
+                    Officer diagnosis is stored separately.
+                    It does not overwrite the original AI prediction.
+
+                </p>
 
             </div>
 
 
-            ${symptomsHTML}
+            <div class="card mt-3">
 
+                <div class="card-title">
 
-            ${actionsHTML}
-
-
-            ${sourceHTML}
-
-
-            <!-- ===========================================================
-                 EXISTING REMARK
-                 =========================================================== -->
-
-            ${
-                report.officer_remark
-
-                    ? `
-
-                        <div class="card">
-
-                            <div class="card-title">
-
-                                Existing Officer Remark
-
-                            </div>
-
-                            <p class="mt-2">
-
-                                ${escapeHTML(
-                                    report.officer_remark
-                                )}
-
-                            </p>
-
-                        </div>
-
-                    `
-
-                    : ""
-            }
-
-
-            <!-- ===========================================================
-                 OFFICER DECISION
-                 =========================================================== -->
-
-            <div class="card">
-
-                <div class="card-title mb-3">
-
-                    Officer Decision
+                    Case Evidence
+                    (${caseEvidence.length})
 
                 </div>
 
 
+                <p class="muted mt-2">
+
+                    All images below share the same
+                    report_id and are reviewed as one case.
+
+                </p>
+
+            </div>
+
+
+            ${evidenceCardsHTML}
+
+
+            <div class="card mt-3">
+
+                <div class="card-title">
+                    Officer Review History
+                </div>
+
+
+                <p class="muted mt-2">
+
+                    Audit entries are shown
+                    per evidence item.
+
+                </p>
+
+
+                ${historyHTML}
+
+            </div>
+
+
+            <div class="card mt-3">
+
+                <div class="card-title">
+                    Officer Decision — Whole Case
+                </div>
+
+
                 <label
-
-                    for="remarkInput"
-
+                    for="diagnosisInput"
                     style="
-                        font-size:14px;
-                        font-weight:600;
                         display:block;
+                        font-weight:600;
+                        margin-top:12px;
                         margin-bottom:8px;
                     "
-
                 >
 
-                    Officer Remark
+                    Officer Diagnosis
 
                 </label>
 
 
                 <textarea
+                    id="diagnosisInput"
 
-                    id="remarkInput"
-
-                    placeholder="Add a note about your decision..."
+                    placeholder="Enter officer's independent diagnosis..."
 
                     style="
                         width:100%;
@@ -1568,93 +2041,182 @@ async function renderReportDetail() {
                         border:1.5px solid var(--color-border);
                         border-radius:8px;
                         font-family:inherit;
-                        margin-bottom:14px;
                     "
-
                 >${escapeHTML(
-                    report.officer_remark ||
-                    ""
+                    existingDiagnosis
                 )}</textarea>
 
 
-                <button
-
-                    class="btn btn-primary mb-3"
-
-                    id="verifyBtn"
-
+                <label
+                    for="remarkInput"
+                    style="
+                        display:block;
+                        font-weight:600;
+                        margin-top:14px;
+                        margin-bottom:8px;
+                    "
                 >
 
-                    ✅ Verify Report
+                    Officer Remark
 
-                </button>
+                </label>
 
 
-                <button
+                <textarea
+                    id="remarkInput"
 
-                    class="btn btn-warning mb-3"
+                    placeholder="Add note about the decision..."
 
-                    id="reviewBtn"
+                    style="
+                        width:100%;
+                        min-height:80px;
+                        padding:12px;
+                        border:1.5px solid var(--color-border);
+                        border-radius:8px;
+                        font-family:inherit;
+                    "
+                >${escapeHTML(
+                    existingRemark
+                )}</textarea>
 
+
+                <div
+                    id="decisionStatus"
+                    class="muted mt-3"
+                >
+                </div>
+
+
+                <div
+                    style="
+                        display:flex;
+                        gap:10px;
+                        flex-wrap:wrap;
+                        margin-top:14px;
+                    "
                 >
 
-                    🔍 Mark Under Review
+                    <button
+                        class="btn btn-primary"
+                        id="verifyBtn"
+                    >
+                        Verify Whole Case
+                    </button>
 
-                </button>
+
+                    <button
+                        class="btn btn-warning"
+                        id="reviewBtn"
+                    >
+                        Mark Whole Case Under Review
+                    </button>
 
 
-                <button
+                    <button
+                        class="btn btn-danger"
+                        id="rejectBtn"
+                    >
+                        Reject Whole Case
+                    </button>
 
-                    class="btn btn-danger"
-
-                    id="rejectBtn"
-
-                >
-
-                    ❌ Reject Evidence
-
-                </button>
+                </div>
 
             </div>
-
         `;
 
 
-        /* ==================================================================
-           DECISION HANDLERS
-           ================================================================== */
+        const diagnosisInput =
+            document.getElementById(
+                "diagnosisInput"
+            );
 
         const remarkInput =
             document.getElementById(
                 "remarkInput"
             );
 
+        const decisionStatus =
+            document.getElementById(
+                "decisionStatus"
+            );
 
-        async function saveDecision(
+
+        async function saveCaseDecision(
             status
         ) {
 
+            const diagnosis =
+                diagnosisInput
+                    ?.value
+                    .trim() ||
+                "";
+
+            const remark =
+                remarkInput
+                    ?.value
+                    .trim() ||
+                "";
+
+            if (
+                status === "Rejected" &&
+                !remark
+            ) {
+
+                alert(
+                    "Please add a reason before rejecting the case."
+                );
+
+                return;
+            }
+
+
+            if (
+                status === "Rejected" &&
+                !confirm(
+                    "Reject this whole case?"
+                )
+            ) {
+                return;
+            }
+
+
             try {
 
-                const result =
-                    await updateOfficerDecision(
+                if (decisionStatus) {
 
-                        report.evidence_id,
+                    decisionStatus.textContent =
+                        `Saving ${status} for ${caseEvidence.length} evidence item(s)...`;
+                }
 
-                        status,
 
-                        remarkInput.value.trim()
+                const results = [];
 
+
+                for (const report of caseEvidence) {
+
+                    const result =
+                        await updateOfficerDecision(
+                            report.evidence_id,
+                            status,
+                            remark,
+                            diagnosis
+                        );
+
+                    results.push(
+                        result
                     );
+                }
+
+
+                if (decisionStatus) {
+
+                    decisionStatus.textContent =
+                        `Saved successfully for ${results.length} evidence item(s).`;
+                }
 
 
                 alert(
-
-                    `Decision updated: ${
-                        result.decision ||
-                        status
-                    }`
-
+                    `Case updated: ${status}`
                 );
 
 
@@ -1665,120 +2227,71 @@ async function renderReportDetail() {
             catch (error) {
 
                 console.error(
+                    "Case decision error:",
                     error
                 );
 
+                if (decisionStatus) {
+
+                    decisionStatus.textContent =
+                        `Error: ${error.message}`;
+                }
 
                 alert(
                     error.message
                 );
-
             }
-
         }
 
-
-        /* Verify */
 
         const verifyBtn =
             document.getElementById(
                 "verifyBtn"
             );
 
-
         if (verifyBtn) {
 
             verifyBtn.addEventListener(
-
                 "click",
-
                 () =>
-                    saveDecision(
+                    saveCaseDecision(
                         "Verified"
                     )
-
             );
-
         }
 
-
-        /* Under Review */
 
         const reviewBtn =
             document.getElementById(
                 "reviewBtn"
             );
 
-
         if (reviewBtn) {
 
             reviewBtn.addEventListener(
-
                 "click",
-
                 () =>
-                    saveDecision(
+                    saveCaseDecision(
                         "Under Review"
                     )
-
             );
-
         }
 
-
-        /* Reject */
 
         const rejectBtn =
             document.getElementById(
                 "rejectBtn"
             );
 
-
         if (rejectBtn) {
 
             rejectBtn.addEventListener(
-
                 "click",
-
-                () => {
-
-                    if (
-                        !remarkInput
-                            .value
-                            .trim()
-                    ) {
-
-                        alert(
-                            "Please add a reason before rejecting evidence."
-                        );
-
-
-                        return;
-
-                    }
-
-
-                    const confirmed =
-                        confirm(
-                            "Reject this evidence?"
-                        );
-
-
-                    if (!confirmed) {
-
-                        return;
-
-                    }
-
-
-                    saveDecision(
+                () =>
+                    saveCaseDecision(
                         "Rejected"
-                    );
-
-                }
-
+                    )
             );
-
         }
 
     }
@@ -1790,19 +2303,12 @@ async function renderReportDetail() {
             error
         );
 
-
         container.innerHTML = `
-
             <div class="empty-state">
-
                 ${escapeHTML(
                     error.message
                 )}
-
             </div>
-
         `;
-
     }
-
 }

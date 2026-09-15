@@ -1,4 +1,4 @@
-const API_BASE_URL = "https://fasalrakshak-ai-backend.onrender.com/api/v1";
+const API_BASE_URL = "http://127.0.0.1:8000/api/v1";
 
 
 /* ==========================================================================
@@ -503,11 +503,11 @@ async function getOfficerReport(
 async function updateOfficerDecision(
     evidenceId,
     status,
-    remark
+    remark,
+    officerDiagnosis = undefined
 ) {
     const token =
         getOfficerToken();
-
 
     if (!token) {
         throw new Error(
@@ -515,6 +515,22 @@ async function updateOfficerDecision(
         );
     }
 
+    const requestBody = {
+        status: status,
+        officer_remark: remark || ""
+    };
+
+    /*
+       Only send officer_diagnosis when the caller intentionally supplies it.
+       This preserves an existing diagnosis for older frontend callers that
+       still use updateOfficerDecision(evidenceId, status, remark).
+    */
+    if (officerDiagnosis !== undefined) {
+        requestBody.officer_diagnosis =
+            officerDiagnosis === null
+                ? null
+                : String(officerDiagnosis);
+    }
 
     const response = await fetch(
         `${API_BASE_URL}/evidence/${encodeURIComponent(
@@ -531,14 +547,11 @@ async function updateOfficerDecision(
                     "application/json"
             },
 
-            body: JSON.stringify({
-                status: status,
-                officer_remark:
-                    remark || ""
-            })
+            body: JSON.stringify(
+                requestBody
+            )
         }
     );
-
 
     if (!response.ok) {
         const message =
@@ -547,15 +560,60 @@ async function updateOfficerDecision(
                 "Officer decision failed."
             );
 
-        if (
-            response.status === 401
-        ) {
+        if (response.status === 401) {
             removeOfficerToken();
         }
 
         throw new Error(message);
     }
 
+    return await response.json();
+}
+
+
+/* ==========================================================================
+   OFFICER - GET REVIEW HISTORY
+   ========================================================================== */
+
+async function getOfficerReviewHistory(
+    evidenceId
+) {
+    const token =
+        getOfficerToken();
+
+    if (!token) {
+        throw new Error(
+            "Officer is not authenticated."
+        );
+    }
+
+    const response = await fetch(
+        `${API_BASE_URL}/evidence/${encodeURIComponent(
+            evidenceId
+        )}/reviews`,
+        {
+            method: "GET",
+
+            headers: {
+                Authorization:
+                    `Bearer ${token}`
+            }
+        }
+    );
+
+    if (!response.ok) {
+        const message =
+            await getErrorMessage(
+                response,
+                "Could not load officer review history."
+            );
+
+        if (response.status === 401) {
+            removeOfficerToken();
+        }
+
+        throw new Error(message);
+    }
 
     return await response.json();
 }
