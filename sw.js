@@ -26,7 +26,7 @@
    ========================================================================== */
 
 const CACHE_VERSION =
-    "fasalrakshak-role3-v2";
+    "fasalrakshak-role3-v3";
 
 
 const STATIC_CACHE =
